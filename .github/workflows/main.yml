@@ -46,7 +46,7 @@ jobs:
     - name: Build Webapp Project image and push to Docker Hub
       shell: bash
       env:
-        DOCKER_IMAGE: blueprint/blueprint-webapp
+        DOCKER_IMAGE: aimodelmatch/backend-webapp
       run: |
         docker buildx use ${{steps.builder.outputs.name}}
         if [[ ${{ endsWith(github.ref, '-RC') }} == true ]]; then
@@ -58,7 +58,7 @@ jobs:
     - name: Build Migrate Project image and push to Docker Hub
       shell: bash
       env:
-        DOCKER_IMAGE: blueprint/blueprint-migrate
+        DOCKER_IMAGE: aimodelmatch/backend-migrate
       run: |
         docker buildx use ${{steps.builder.outputs.name}}
         if [[ ${{ endsWith(github.ref, '-RC') }} == true ]]; then
@@ -70,7 +70,7 @@ jobs:
     - name: Build CLI Project image and push to Docker Hub
       shell: bash
       env:
-        DOCKER_IMAGE: blueprint/blueprint-cli
+        DOCKER_IMAGE: aimodelmatch/backend-cli
       run: |
         docker buildx use ${{steps.builder.outputs.name}}
         if [[ ${{ endsWith(github.ref, '-RC') }} == true ]]; then
