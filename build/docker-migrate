@@ -1,0 +1,9 @@
+FROM --platform=$TARGETPLATFORM migrate/migrate:4 as production
+
+WORKDIR /go/bin/backend
+COPY ./scripts/migrations/ ./scripts/migrations/
+COPY ./scripts/migrate.sh ./migrate.sh
+RUN chmod +x ./migrate.sh
+ENTRYPOINT ["/bin/sh"]
+CMD ["./migrate.sh"]
+

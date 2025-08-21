@@ -1,0 +1,8 @@
+.idea
+.vscode
+.DS_STORE
+__debug*
+# Docker Volumes
+build/volumes
+# Tests
+coverage.out

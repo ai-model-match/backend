@@ -1,0 +1,102 @@
+services:
+  mm-database:
+    image: postgres:17.6-alpine
+    restart: unless-stopped
+    ports:
+      - 54322:5432
+    volumes:
+      - ./volumes/mm-database:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aimodelmatch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimodelmatch}
+      POSTGRES_DB: ${POSTGRES_DB:-aimodelmatch}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-backend}" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend-network
+
+  mm-migrate:
+    build:
+      context: ../
+      dockerfile: ./build/docker-migrate
+      target: production
+    image: backend-migrate
+    depends_on:
+      mm-database:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST:-mm-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-aimodelmatch}
+      DB_PASSWORD: ${DB_PASSWORD:-aimodelmatch}
+      DB_USER: ${DB_USER:-aimodelmatch}
+      DB_NAME: ${DB_NAME:-aimodelmatch}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+    networks:
+      - backend-network
+
+  mm-webapp:
+    build:
+      context: ../
+      dockerfile: build/docker-webapp
+      target: production
+    image: backend-webapp
+    restart: unless-stopped
+    ports:
+      - 8003:8003
+    depends_on:
+      mm-database:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST:-mm-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-aimodelmatch}
+      DB_PASSWORD: ${DB_PASSWORD:-aimodelmatch}
+      DB_NAME: ${DB_NAME:-aimodelmatch}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+      DB_LOG_SLOW_QUERY_THRESHOLD: ${DB_LOG_SLOW_QUERY_THRESHOLD:-1}
+      APP_PORT: ${APP_PORT:-8003}
+      APP_MODE: ${APP_MODE:-debug}
+      APP_CORS_ORIGIN: ${APP_CORS_ORIGIN:-http://localhost:5173}
+      SEARCH_RELEVANCE_THRESHOLD: ${SEARCH_RELEVANCE_THRESHOLD:-0.05}
+    healthcheck:
+      test: >
+        sh -c 'wget -S -q  -O -  http://127.0.0.1:8003/api/v1/health-check 2>&1 >/dev/null | grep "200 OK"'
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - backend-network
+
+  mm-cli:
+    build:
+      context: ../
+      dockerfile: build/docker-cli
+      target: production
+    image: backend-cli
+    restart: unless-stopped
+    depends_on:
+      mm-webapp:
+        condition: service_healthy
+    environment:
+      DB_HOST: ${DB_HOST:-mm-database}
+      DB_PORT: ${DB_PORT:-5432}
+      DB_USERNAME: ${DB_USERNAME:-backend}
+      DB_PASSWORD: ${DB_PASSWORD:-backend}
+      DB_USER: ${DB_USER:-backend}
+      DB_NAME: ${DB_NAME:-backend}
+      DB_SSL_MODE: ${DB_SSL_MODE:-disable}
+      DB_LOG_SLOW_QUERY_THRESHOLD: ${DB_LOG_SLOW_QUERY_THRESHOLD:-1}
+      APP_PORT: ${APP_PORT:-8003}
+      APP_MODE: ${APP_MODE:-debug}
+      APP_CORS_ORIGIN: ${APP_CORS_ORIGIN:-http://localhost:5173}
+      SEARCH_RELEVANCE_THRESHOLD: ${SEARCH_RELEVANCE_THRESHOLD:-0.05}
+    networks:
+      - backend-network
+
+networks:
+  backend-network:
+    driver: bridge
