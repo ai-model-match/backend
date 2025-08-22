@@ -7,14 +7,14 @@ import (
 )
 
 type userEntity struct {
-	id        uuid.UUID
-	email     string
-	firstname string
-	lastname  string
-	createdAt time.Time
-	updatedAt time.Time
-	deletedAt *time.Time
-	createdBy uuid.UUID
-	updatedBy uuid.UUID
-	deletedBy *uuid.UUID
+	ID        uuid.UUID
+	Email     string
+	Firstname string
+	Lastname  string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt *time.Time
+	CreatedBy uuid.UUID
+	UpdatedBy uuid.UUID
+	DeletedBy *uuid.UUID
 }

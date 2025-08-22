@@ -6,12 +6,12 @@ import (
 )
 
 type getUserInputDto struct {
-	id string `uri:"userID"`
+	ID string `uri:"userID"`
 }
 
 func (r getUserInputDto) validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.id, validation.Required, is.UUID),
+		validation.Field(&r.ID, validation.Required, is.UUID),
 	)
 }
 

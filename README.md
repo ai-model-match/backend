@@ -1,8 +1,8 @@
 
 ![Cover image](/assets/images/cover.png)
 
-# Backend application!
-Welcome to the GO + GIN backend application to get all your projects started! Fork this repository and start building on it following the best practices already implemented and avoiding boilerplates like Postgres DB connection, logger, project structure, env variables, and scripts.
+# AI Model Match application!
+Thanks to AI Model Match, AI Product Managers will be able to iteratively identify the optimal combination of AI model, prompt, and configuration for their AI product. They will also be able to independently and automatically release and monitor new versions by collecting feedback and tracking requests, minimizing experimentation and implementation time while maximizing the product’s impact and effectiveness.
 
 ## Developer Experience
 Below you can find instructions on how to start developing natively your project based on the Backend, leveraging a dockerized external Database.
@@ -60,12 +60,12 @@ If you want. you can run the webapp application in docker, useful for testing/de
 ``` sh
 bash build/scripts/dev/start.sh
 ```
-The webapp is mapped on the port `8003`.
+The webapp is mapped on the port `8001`.
 
 ### Test the webapp
 To test the webapp, please open Postman and call this endpoint:
 ```
-POST http://0.0.0.0:8003/api/v1/users
+POST http://0.0.0.0:8001/api/v1/health-check
 ```
 
 ### Env variables

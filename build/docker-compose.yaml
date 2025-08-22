@@ -46,7 +46,7 @@ services:
     image: backend-webapp
     restart: unless-stopped
     ports:
-      - 8003:8003
+      - 8001:8001
     depends_on:
       mm-database:
         condition: service_healthy
@@ -58,13 +58,20 @@ services:
       DB_NAME: ${DB_NAME:-aimodelmatch}
       DB_SSL_MODE: ${DB_SSL_MODE:-disable}
       DB_LOG_SLOW_QUERY_THRESHOLD: ${DB_LOG_SLOW_QUERY_THRESHOLD:-1}
-      APP_PORT: ${APP_PORT:-8003}
+      APP_PORT: ${APP_PORT:-8001}
       APP_MODE: ${APP_MODE:-debug}
       APP_CORS_ORIGIN: ${APP_CORS_ORIGIN:-http://localhost:5173}
       SEARCH_RELEVANCE_THRESHOLD: ${SEARCH_RELEVANCE_THRESHOLD:-0.05}
+      AUTH_USER_READ_ONLY_USERNAME: ${AUTH_USER_READ_ONLY_USERNAME:-ro_username}
+      AUTH_USER_READ_ONLY_PASSWORD: ${AUTH_USER_READ_ONLY_PASSWORD:-ro_password}
+      AUTH_USER_READ_WRITE_USERNAME: ${AUTH_USER_READ_WRITE_USERNAME:-rw_username}
+      AUTH_USER_READ_WRITE_PASSWORD: ${AUTH_USER_READ_WRITE_PASSWORD:-rw_username}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-fake-jwt-secret-1234567890}
+      AUTH_JWT_ACCESS_TOKEN_DURATION: ${AUTH_JWT_ACCESS_TOKEN_DURATION:-3600}
+      AUTH_JWT_REFRESH_TOKEN_DURATION: ${AUTH_JWT_REFRESH_TOKEN_DURATION:-86400}
     healthcheck:
       test: >
-        sh -c 'wget -S -q  -O -  http://127.0.0.1:8003/api/v1/health-check 2>&1 >/dev/null | grep "200 OK"'
+        sh -c 'wget -S -q  -O -  http://127.0.0.1:8001/api/v1/health-check 2>&1 >/dev/null | grep "200 OK"'
       interval: 5s
       timeout: 5s
       retries: 20
@@ -90,10 +97,17 @@ services:
       DB_NAME: ${DB_NAME:-backend}
       DB_SSL_MODE: ${DB_SSL_MODE:-disable}
       DB_LOG_SLOW_QUERY_THRESHOLD: ${DB_LOG_SLOW_QUERY_THRESHOLD:-1}
-      APP_PORT: ${APP_PORT:-8003}
+      APP_PORT: ${APP_PORT:-8001}
       APP_MODE: ${APP_MODE:-debug}
       APP_CORS_ORIGIN: ${APP_CORS_ORIGIN:-http://localhost:5173}
       SEARCH_RELEVANCE_THRESHOLD: ${SEARCH_RELEVANCE_THRESHOLD:-0.05}
+      AUTH_USER_READ_ONLY_USERNAME: ${AUTH_USER_READ_ONLY_USERNAME:-ro_username}
+      AUTH_USER_READ_ONLY_PASSWORD: ${AUTH_USER_READ_ONLY_PASSWORD:-ro_password}
+      AUTH_USER_READ_WRITE_USERNAME: ${AUTH_USER_READ_WRITE_USERNAME:-rw_username}
+      AUTH_USER_READ_WRITE_PASSWORD: ${AUTH_USER_READ_WRITE_PASSWORD:-rw_username}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-fake-jwt-secret-1234567890}
+      AUTH_JWT_ACCESS_TOKEN_DURATION: ${AUTH_JWT_ACCESS_TOKEN_DURATION:-3600}
+      AUTH_JWT_REFRESH_TOKEN_DURATION: ${AUTH_JWT_REFRESH_TOKEN_DURATION:-86400}
     networks:
       - backend-network
 

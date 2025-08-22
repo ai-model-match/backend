@@ -10,6 +10,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ai-model-match/backend/internal/app/auth"
+	"github.com/ai-model-match/backend/internal/app/healthCheck"
 	"github.com/ai-model-match/backend/internal/app/user"
 	"github.com/ai-model-match/backend/internal/pkg/mmcors"
 	"github.com/ai-model-match/backend/internal/pkg/mmdb"
@@ -70,6 +72,8 @@ func main() {
 
 	// Init moduels that will start exposing endpoints and consumers of internal events
 	v1Api := r.Group("api/v1")
+	healthCheck.Init(envs, dbConnection, v1Api)
+	auth.Init(envs, dbConnection, v1Api)
 	user.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Start the application

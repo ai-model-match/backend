@@ -20,6 +20,6 @@ FROM --platform=$TARGETPLATFORM golang:1.25 AS production
 WORKDIR /go/bin/backend
 COPY --from=builder /backend/.env ./.env
 COPY --from=builder /backend/build/backend.app ./backend.app
-EXPOSE 8003
+EXPOSE 8001
 ENTRYPOINT ["./backend.app"]
 

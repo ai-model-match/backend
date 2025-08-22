@@ -31,7 +31,7 @@ func newUserService(storage *gorm.DB, pubSubAgent *mmpubsub.PubSubAgent, reposit
 }
 
 func (s userService) getUserByID(ctx *gin.Context, input getUserInputDto) (userEntity, error) {
-	userID := uuid.MustParse(input.id)
+	userID := uuid.MustParse(input.ID)
 	item, err := s.repository.getUserByID(s.storage, userID, false)
 	if err != nil {
 		return userEntity{}, mmerr.ErrGeneric
@@ -45,16 +45,16 @@ func (s userService) getUserByID(ctx *gin.Context, input getUserInputDto) (userE
 func (s userService) createUser(ctx *gin.Context, requesterID uuid.UUID, input createUserInputDto) (userEntity, error) {
 	now := time.Now()
 	user := userEntity{
-		id:        uuid.MustParse(input.ID),
-		firstname: input.Firstname,
-		lastname:  input.Lastname,
-		email:     input.Email,
-		createdAt: now,
-		updatedAt: now,
-		deletedAt: nil,
-		createdBy: requesterID,
-		updatedBy: requesterID,
-		deletedBy: nil,
+		ID:        uuid.MustParse(input.ID),
+		Firstname: input.Firstname,
+		Lastname:  input.Lastname,
+		Email:     input.Email,
+		CreatedAt: now,
+		UpdatedAt: now,
+		DeletedAt: nil,
+		CreatedBy: requesterID,
+		UpdatedBy: requesterID,
+		DeletedBy: nil,
 	}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		_, err := s.repository.saveUser(tx, user)
@@ -73,16 +73,16 @@ func (s userService) createUser(ctx *gin.Context, requesterID uuid.UUID, input c
 			EventTime: time.Now(),
 			EventType: mmpubsub.UserCreatedEvent,
 			EventEntity: mmpubsub.UserEventEntity{
-				ID:        user.id,
-				Firstname: user.firstname,
-				Lastname:  user.lastname,
-				Email:     user.email,
-				CreatedAt: user.createdAt,
-				UpdatedAt: user.updatedAt,
-				DeletedAt: user.deletedAt,
-				CreatedBy: user.createdBy,
-				UpdatedBy: user.updatedBy,
-				DeletedBy: user.deletedBy,
+				ID:        user.ID,
+				Firstname: user.Firstname,
+				Lastname:  user.Lastname,
+				Email:     user.Email,
+				CreatedAt: user.CreatedAt,
+				UpdatedAt: user.UpdatedAt,
+				DeletedAt: user.DeletedAt,
+				CreatedBy: user.CreatedBy,
+				UpdatedBy: user.UpdatedBy,
+				DeletedBy: user.DeletedBy,
 			},
 		},
 	})
