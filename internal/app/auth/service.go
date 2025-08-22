@@ -44,14 +44,14 @@ func (s authService) login(ctx *gin.Context, username string, password string) (
 	}
 	// Store the Refresh token in DB for further requests
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		authEntity := authEntity{
+		authEntity := authSessionEntity{
 			ID:           token.RefreshTokenID,
 			Username:     user.Username,
 			CreatedAt:    token.RefreshTokenCreatedAt,
 			ExpiresAt:    token.RefreshTokenExpiresAt,
 			RefreshToken: token.RefreshToken,
 		}
-		if _, err := s.repository.save(tx, authEntity); err != nil {
+		if _, err := s.repository.saveAuthSessionEntity(tx, authEntity); err != nil {
 			return err
 		}
 		return nil
@@ -66,7 +66,7 @@ func (s authService) refreshToken(ctx *gin.Context, refreshToken string) (authTo
 	var token authTokenEntity
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Find the auth entity by Refresh token
-		authEntity, err := s.repository.getAuthEntityByRefreshToken(tx, refreshToken, true)
+		authEntity, err := s.repository.getAuthSessionEntityByRefreshToken(tx, refreshToken, true)
 		if err != nil {
 			return err
 		}
@@ -86,7 +86,7 @@ func (s authService) refreshToken(ctx *gin.Context, refreshToken string) (authTo
 		authEntity.CreatedAt = token.RefreshTokenCreatedAt
 		authEntity.ExpiresAt = token.RefreshTokenExpiresAt
 		authEntity.RefreshToken = token.RefreshToken
-		if _, err := s.repository.save(tx, authEntity); err != nil {
+		if _, err := s.repository.saveAuthSessionEntity(tx, authEntity); err != nil {
 			return err
 		}
 		return nil
@@ -100,7 +100,7 @@ func (s authService) refreshToken(ctx *gin.Context, refreshToken string) (authTo
 func (s authService) revokeRefreshToken(ctx *gin.Context, refreshToken string) error {
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Find the auth entity by Refresh token
-		authEntity, err := s.repository.getAuthEntityByRefreshToken(tx, refreshToken, true)
+		authEntity, err := s.repository.getAuthSessionEntityByRefreshToken(tx, refreshToken, true)
 		if err != nil {
 			return err
 		}
@@ -109,7 +109,7 @@ func (s authService) revokeRefreshToken(ctx *gin.Context, refreshToken string) e
 			return errExpiredRefreshToken
 		}
 		// If found, delete it
-		if err := s.repository.delete(tx, authEntity); err != nil {
+		if err := s.repository.deleteAuthSessionEntity(tx, authEntity); err != nil {
 			return err
 		}
 		return nil

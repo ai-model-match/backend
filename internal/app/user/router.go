@@ -29,7 +29,7 @@ func newUserRouter(service userServiceInterface) userRouter {
 func (r userRouter) register(router *gin.RouterGroup) {
 	router.GET(
 		"/users/:userID",
-		mmauth.AuthMiddleware([]string{mmauth.UserGet}),
+		mmauth.AuthMiddleware([]string{mmauth.READ}),
 		mmtimeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
 			// Input validation

@@ -3,6 +3,7 @@ package auth
 import (
 	"time"
 
+	"github.com/ai-model-match/backend/internal/pkg/mmauth"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
@@ -29,7 +30,7 @@ func (u authUtil) generateToken(user authUserEntity) (authTokenEntity, error) {
 	// Define JWT Claims including permissions
 	type CustomClaims struct {
 		jwt.RegisteredClaims
-		Permissions []Claim `json:"permissions"`
+		Permissions []string `json:"permissions"`
 	}
 
 	// Define Access and Refresh Token ID and their duration
@@ -40,8 +41,8 @@ func (u authUtil) generateToken(user authUserEntity) (authTokenEntity, error) {
 	refreshTokenID := uuid.New()
 
 	// Create Access Token with claims
-	accessClaims := CustomClaims{
-		Permissions: user.Claims,
+	accessTokenClaims := CustomClaims{
+		Permissions: user.Permissions,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        accessTokenID.String(),
 			Issuer:    "ai-model-match",
@@ -50,15 +51,15 @@ func (u authUtil) generateToken(user authUserEntity) (authTokenEntity, error) {
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
-	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	accessStr, err := accessToken.SignedString([]byte(u.authJwtSecret))
+	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessTokenClaims)
+	accessTokenStr, err := accessToken.SignedString([]byte(u.authJwtSecret))
 	if err != nil {
 		return authTokenEntity{}, err
 	}
 
 	// Create Refresh Token with claims
-	refreshClaims := CustomClaims{
-		Permissions: []Claim{REFRESH},
+	refreshTokenClaims := CustomClaims{
+		Permissions: []string{mmauth.REFRESH},
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        refreshTokenID.String(),
 			Issuer:    "ai-model-match",
@@ -67,16 +68,16 @@ func (u authUtil) generateToken(user authUserEntity) (authTokenEntity, error) {
 			IssuedAt:  jwt.NewNumericDate(now),
 		},
 	}
-	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshStr, err := refreshToken.SignedString([]byte(u.authJwtSecret))
+	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshTokenClaims)
+	refreshTokenStr, err := refreshToken.SignedString([]byte(u.authJwtSecret))
 	if err != nil {
 		return authTokenEntity{}, err
 	}
 
 	// Return generated tokens
 	return authTokenEntity{
-		AccessToken:           accessStr,
-		RefreshToken:          refreshStr,
+		AccessToken:           accessTokenStr,
+		RefreshToken:          refreshTokenStr,
 		AccessTokenID:         accessTokenID,
 		RefreshTokenID:        refreshTokenID,
 		AccessTokenCreatedAt:  now,

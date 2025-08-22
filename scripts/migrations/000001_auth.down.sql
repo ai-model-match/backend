@@ -1,3 +1,3 @@
-ALTER TABLE "mm_auth" DROP CONSTRAINT "idx_mm_auth_refresh_token";
+ALTER TABLE "mm_auth_session" DROP CONSTRAINT "idx_mm_auth_session_refresh_token";
 
-DROP TABLE IF EXISTS "mm_auth";
+DROP TABLE IF EXISTS "mm_auth_session";

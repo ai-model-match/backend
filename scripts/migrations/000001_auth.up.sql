@@ -1,4 +1,4 @@
-CREATE TABLE "mm_auth" (
+CREATE TABLE "mm_auth_session" (
     "id" varchar(36) PRIMARY KEY NOT NULL,
     "username" varchar(255) NOT NULL,
     "created_at" timestamp NOT NULL,
@@ -6,4 +6,4 @@ CREATE TABLE "mm_auth" (
     "refresh_token" text NOT NULL
 );
 
-ALTER TABLE "mm_auth" ADD CONSTRAINT "idx_mm_auth_refresh_token" UNIQUE ("refresh_token");
+ALTER TABLE "mm_auth_session" ADD CONSTRAINT "idx_mm_auth_session_refresh_token" UNIQUE ("refresh_token");

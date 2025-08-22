@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/ai-model-match/backend/internal/pkg/mmauth"
 	"github.com/ai-model-match/backend/internal/pkg/mmenv"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -18,16 +19,16 @@ func Init(envs *mmenv.Envs, dbStorage *gorm.DB, routerGroup *gin.RouterGroup) {
 	var service authServiceInterface
 	var router authRouterInterface
 
+	// Define the available user roles
 	roUser := authUserEntity{
-		Username: envs.AuthUserReadOnlyUsername,
-		Password: envs.AuthUserReadOnlyPassword,
-		Claims:   []Claim{READ},
+		Username:    envs.AuthUserReadOnlyUsername,
+		Password:    envs.AuthUserReadOnlyPassword,
+		Permissions: []string{mmauth.READ},
 	}
-
 	rwUser := authUserEntity{
-		Username: envs.AuthUserReadWriteUsername,
-		Password: envs.AuthUserReadWritePassword,
-		Claims:   []Claim{READ, WRITE},
+		Username:    envs.AuthUserReadWriteUsername,
+		Password:    envs.AuthUserReadWritePassword,
+		Permissions: []string{mmauth.READ, mmauth.WRITE},
 	}
 
 	repository = newAuthRepository()

@@ -6,9 +6,9 @@ import (
 )
 
 type authRepositoryInterface interface {
-	getAuthEntityByRefreshToken(tx *gorm.DB, refreshToken string, forUpdate bool) (authEntity, error)
-	save(tx *gorm.DB, entity authEntity) (authEntity, error)
-	delete(tx *gorm.DB, entity authEntity) error
+	getAuthSessionEntityByRefreshToken(tx *gorm.DB, refreshToken string, forUpdate bool) (authSessionEntity, error)
+	saveAuthSessionEntity(tx *gorm.DB, entity authSessionEntity) (authSessionEntity, error)
+	deleteAuthSessionEntity(tx *gorm.DB, entity authSessionEntity) error
 }
 
 type authRepository struct {
@@ -18,8 +18,8 @@ func newAuthRepository() authRepository {
 	return authRepository{}
 }
 
-func (r authRepository) getAuthEntityByRefreshToken(tx *gorm.DB, refreshToken string, forUpdate bool) (authEntity, error) {
-	var model *authModel
+func (r authRepository) getAuthSessionEntityByRefreshToken(tx *gorm.DB, refreshToken string, forUpdate bool) (authSessionEntity, error) {
+	var model *authSessionModel
 	query := tx.Where("refresh_token = ?", refreshToken)
 	query.Where("expires_at > now()")
 	if forUpdate {
@@ -27,25 +27,25 @@ func (r authRepository) getAuthEntityByRefreshToken(tx *gorm.DB, refreshToken st
 	}
 	result := query.Limit(1).Find(&model)
 	if result.Error != nil {
-		return authEntity{}, result.Error
+		return authSessionEntity{}, result.Error
 	}
 	if result.RowsAffected == 0 {
-		return authEntity{}, nil
+		return authSessionEntity{}, nil
 	}
 	return model.toEntity(), nil
 }
 
-func (r authRepository) save(tx *gorm.DB, entity authEntity) (authEntity, error) {
-	var model = authModel(entity)
+func (r authRepository) saveAuthSessionEntity(tx *gorm.DB, entity authSessionEntity) (authSessionEntity, error) {
+	var model = authSessionModel(entity)
 	err := tx.Save(model).Error
 	if err != nil {
-		return authEntity{}, err
+		return authSessionEntity{}, err
 	}
 	return entity, nil
 }
 
-func (r authRepository) delete(tx *gorm.DB, entity authEntity) error {
-	var model = authModel(entity)
+func (r authRepository) deleteAuthSessionEntity(tx *gorm.DB, entity authSessionEntity) error {
+	var model = authSessionModel(entity)
 	if err := tx.Delete(model).Error; err != nil {
 		return err
 	}

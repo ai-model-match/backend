@@ -6,7 +6,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type authModel struct {
+type authSessionModel struct {
 	ID           uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
 	Username     string    `gorm:"column:username;type::varchar(255)"`
 	CreatedAt    time.Time `gorm:"column:created_at;type:timestamp"`
@@ -14,10 +14,10 @@ type authModel struct {
 	RefreshToken string    `gorm:"column:refresh_token;type:text"`
 }
 
-func (m authModel) TableName() string {
-	return "mm_auth"
+func (m authSessionModel) TableName() string {
+	return "mm_auth_session"
 }
 
-func (m authModel) toEntity() authEntity {
-	return authEntity(m)
+func (m authSessionModel) toEntity() authSessionEntity {
+	return authSessionEntity(m)
 }

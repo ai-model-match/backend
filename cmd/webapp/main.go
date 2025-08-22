@@ -13,6 +13,7 @@ import (
 	"github.com/ai-model-match/backend/internal/app/auth"
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
 	"github.com/ai-model-match/backend/internal/app/user"
+	"github.com/ai-model-match/backend/internal/pkg/mmauth"
 	"github.com/ai-model-match/backend/internal/pkg/mmcors"
 	"github.com/ai-model-match/backend/internal/pkg/mmdb"
 	"github.com/ai-model-match/backend/internal/pkg/mmenv"
@@ -65,6 +66,9 @@ func main() {
 		allowOrigins = append(allowOrigins, mmcors.LocalhostOrigin)
 	}
 	r.Use(mmcors.CorsMiddleware(allowOrigins))
+
+	// Init Authentication middleware
+	mmauth.InitAuthMiddleware(envs.AuthJwtSecret)
 
 	r.NoRoute(func(ctx *gin.Context) {
 		mmrouter.ReturnNotFoundError(ctx, errors.New("endpoint-not-found"))
