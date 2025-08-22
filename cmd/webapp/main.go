@@ -12,13 +12,13 @@ import (
 
 	"github.com/ai-model-match/backend/internal/app/auth"
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
-	"github.com/ai-model-match/backend/internal/app/user"
-	"github.com/ai-model-match/backend/internal/pkg/mmauth"
-	"github.com/ai-model-match/backend/internal/pkg/mmcors"
-	"github.com/ai-model-match/backend/internal/pkg/mmdb"
-	"github.com/ai-model-match/backend/internal/pkg/mmenv"
-	"github.com/ai-model-match/backend/internal/pkg/mmpubsub"
-	"github.com/ai-model-match/backend/internal/pkg/mmrouter"
+	"github.com/ai-model-match/backend/internal/app/useCase"
+	"github.com/ai-model-match/backend/internal/pkg/mm_auth"
+	"github.com/ai-model-match/backend/internal/pkg/mm_cors"
+	"github.com/ai-model-match/backend/internal/pkg/mm_db"
+	"github.com/ai-model-match/backend/internal/pkg/mm_env"
+	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
+	"github.com/ai-model-match/backend/internal/pkg/mm_router"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
@@ -34,7 +34,7 @@ func main() {
 	// Set default Timezone
 	os.Setenv("TZ", "UTC")
 	// ENV Variables
-	envs := mmenv.ReadEnvs()
+	envs := mm_env.ReadEnvs()
 	// Set Logger
 	logger := zap.Must(zap.NewProduction())
 	if envs.AppMode != "release" {
@@ -42,7 +42,7 @@ func main() {
 	}
 	zap.ReplaceGlobals(logger)
 	// DB Connection
-	dbConnection := mmdb.NewDatabaseConnection(
+	dbConnection := mm_db.NewDatabaseConnection(
 		envs.DbHost,
 		envs.DbUsername,
 		envs.DbPassword,
@@ -53,7 +53,7 @@ func main() {
 		envs.AppMode,
 	)
 	// PUB-SUB agent
-	pubSubAgent := mmpubsub.NewPubSubAgent()
+	pubSubAgent := mm_pubsub.NewPubSubAgent()
 
 	// Start Server
 	zap.L().Info("Starting HTTP Server...", zap.String("service", "webapp"))
@@ -63,22 +63,22 @@ func main() {
 	// Cors Middleware
 	allowOrigins := []string{envs.AppCorsOrigin}
 	if envs.AppMode != "release" {
-		allowOrigins = append(allowOrigins, mmcors.LocalhostOrigin)
+		allowOrigins = append(allowOrigins, mm_cors.LocalhostOrigin)
 	}
-	r.Use(mmcors.CorsMiddleware(allowOrigins))
+	r.Use(mm_cors.CorsMiddleware(allowOrigins))
 
 	// Init Authentication middleware
-	mmauth.InitAuthMiddleware(envs.AuthJwtSecret)
+	mm_auth.InitAuthMiddleware(envs.AuthJwtSecret)
 
 	r.NoRoute(func(ctx *gin.Context) {
-		mmrouter.ReturnNotFoundError(ctx, errors.New("endpoint-not-found"))
+		mm_router.ReturnNotFoundError(ctx, errors.New("endpoint-not-found"))
 	})
 
 	// Init moduels that will start exposing endpoints and consumers of internal events
 	v1Api := r.Group("api/v1")
 	healthCheck.Init(envs, dbConnection, v1Api)
 	auth.Init(envs, dbConnection, v1Api)
-	user.Init(envs, dbConnection, pubSubAgent, v1Api)
+	useCase.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Start the application
 	srv := &http.Server{
@@ -108,7 +108,7 @@ func main() {
 	zap.L().Info("Shutdown Server in 3 seconds...", zap.String("service", "webapp"))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	mmdb.CloseDatabaseConnection(dbConnection)
+	mm_db.CloseDatabaseConnection(dbConnection)
 	pubSubAgent.Close()
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {

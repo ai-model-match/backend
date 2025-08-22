@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/ai-model-match/backend/cmd/cli/commands"
-	"github.com/ai-model-match/backend/internal/pkg/mmenv"
+	"github.com/ai-model-match/backend/internal/pkg/mm_env"
 	"github.com/urfave/cli"
 	"go.uber.org/zap"
 )
@@ -22,7 +22,7 @@ func main() {
 	// Set default Timezone
 	os.Setenv("TZ", "UTC")
 	// ENV Variables
-	envs := mmenv.ReadEnvs()
+	envs := mm_env.ReadEnvs()
 	// Set Logger
 	logger := zap.Must(zap.NewProduction())
 	if envs.AppMode != "release" {

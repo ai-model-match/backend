@@ -3,8 +3,8 @@ package healthCheck
 import (
 	"time"
 
-	"github.com/ai-model-match/backend/internal/pkg/mmrouter"
-	"github.com/ai-model-match/backend/internal/pkg/mmtimeout"
+	"github.com/ai-model-match/backend/internal/pkg/mm_router"
+	"github.com/ai-model-match/backend/internal/pkg/mm_timeout"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
@@ -28,7 +28,7 @@ func newHealthCheckRouter(service healthCheckServiceInterface) healthCheckRouter
 func (r healthCheckRouter) register(router *gin.RouterGroup) {
 	router.GET(
 		"/health-check",
-		mmtimeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
 			// Business Logic
 			isOk, err := r.service.checkConnection(ctx)
@@ -36,9 +36,9 @@ func (r healthCheckRouter) register(router *gin.RouterGroup) {
 			// Errors and output handler
 			if err != nil {
 				zap.L().Error("Something went wrong", zap.String("service", "health-check-router"), zap.Error(err))
-				mmrouter.ReturnGenericError(ctx)
+				mm_router.ReturnGenericError(ctx)
 				return
 			}
-			mmrouter.ReturnOk(ctx, &gin.H{"ok": isOk})
+			mm_router.ReturnOk(ctx, &gin.H{"ok": isOk})
 		})
 }

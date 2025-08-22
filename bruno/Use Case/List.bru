@@ -1,0 +1,27 @@
+meta {
+  name: List
+  type: http
+  seq: 1
+}
+
+get {
+  url: http://127.0.0.1:8001/api/v1/use-cases?page=1&pageSize=2&orderBy=relevance&orderDir=asc&searchKey=test
+  body: none
+  auth: bearer
+}
+
+params:query {
+  page: 1
+  pageSize: 2
+  orderBy: relevance
+  orderDir: asc
+  searchKey: test
+}
+
+auth:bearer {
+  token: 
+}
+
+settings {
+  encodeUrl: true
+}

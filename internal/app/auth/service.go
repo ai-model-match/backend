@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"github.com/ai-model-match/backend/internal/pkg/mmutils"
+	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -34,7 +34,7 @@ func (s authService) login(ctx *gin.Context, username string, password string) (
 	if err != nil {
 		return authTokenEntity{}, err
 	}
-	if mmutils.IsEmpty(user) {
+	if mm_utils.IsEmpty(user) {
 		return authTokenEntity{}, errInvalidCredentials
 	}
 	// Generate Access and Refresh Token
@@ -70,7 +70,7 @@ func (s authService) refreshToken(ctx *gin.Context, refreshToken string) (authTo
 		if err != nil {
 			return err
 		}
-		if mmutils.IsEmpty(authEntity) {
+		if mm_utils.IsEmpty(authEntity) {
 			return errExpiredRefreshToken
 		}
 		// Find the user and its information like claims
@@ -105,7 +105,7 @@ func (s authService) revokeRefreshToken(ctx *gin.Context, refreshToken string) e
 			return err
 		}
 		// If not found, return without error
-		if mmutils.IsEmpty(authEntity) {
+		if mm_utils.IsEmpty(authEntity) {
 			return errExpiredRefreshToken
 		}
 		// If found, delete it

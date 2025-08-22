@@ -1,3 +1,5 @@
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE TABLE "mm_auth_session" (
     "id" varchar(36) PRIMARY KEY NOT NULL,
     "username" varchar(255) NOT NULL,

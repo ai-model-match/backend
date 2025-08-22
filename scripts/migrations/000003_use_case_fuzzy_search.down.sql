@@ -1,0 +1,1 @@
+DROP INDEX idx_mm_use_case_search;

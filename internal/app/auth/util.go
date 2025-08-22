@@ -3,7 +3,7 @@ package auth
 import (
 	"time"
 
-	"github.com/ai-model-match/backend/internal/pkg/mmauth"
+	"github.com/ai-model-match/backend/internal/pkg/mm_auth"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 )
@@ -59,7 +59,7 @@ func (u authUtil) generateToken(user authUserEntity) (authTokenEntity, error) {
 
 	// Create Refresh Token with claims
 	refreshTokenClaims := CustomClaims{
-		Permissions: []string{mmauth.REFRESH},
+		Permissions: []string{mm_auth.REFRESH},
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        refreshTokenID.String(),
 			Issuer:    "ai-model-match",
