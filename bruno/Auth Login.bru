@@ -12,9 +12,15 @@ post {
 
 body:json {
   {
-    "username": "ro_username",
-    "password": "ro_password"
+    "username": "rw_username",
+    "password": "rw_password"
   }
+}
+
+script:post-response {
+  bru.setVar("accessToken", res.body?.item?.accessToken);
+  bru.setVar("refreshToken", res.body?.item?.refreshToken);
+  
 }
 
 settings {

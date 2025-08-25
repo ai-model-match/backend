@@ -12,7 +12,9 @@ import (
 type useCaseRepositoryInterface interface {
 	listUseCases(tx *gorm.DB, limit int, offset int, orderBy useCaseOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]useCaseEntity, int64, error)
 	getUseCaseByID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) (useCaseEntity, error)
+	getUseCaseByCode(tx *gorm.DB, useCaseCode string, forUpdate bool) (useCaseEntity, error)
 	saveUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
+	deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
 }
 
 type useCaseRepository struct {
@@ -80,9 +82,34 @@ func (r useCaseRepository) getUseCaseByID(tx *gorm.DB, useCaseID uuid.UUID, forU
 	return model.toEntity(), nil
 }
 
+func (r useCaseRepository) getUseCaseByCode(tx *gorm.DB, useCaseCode string, forUpdate bool) (useCaseEntity, error) {
+	var model *useCaseModel
+	query := tx.Where("code = ?", useCaseCode)
+	if forUpdate {
+		query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	result := query.Limit(1).Find(&model)
+	if result.Error != nil {
+		return useCaseEntity{}, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return useCaseEntity{}, nil
+	}
+	return model.toEntity(), nil
+}
+
 func (r useCaseRepository) saveUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error) {
 	var model = useCaseModel(useCase)
 	err := tx.Save(model).Error
+	if err != nil {
+		return useCaseEntity{}, err
+	}
+	return useCase, nil
+}
+
+func (r useCaseRepository) deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error) {
+	var model = useCaseModel(useCase)
+	err := tx.Delete(model).Error
 	if err != nil {
 		return useCaseEntity{}, err
 	}

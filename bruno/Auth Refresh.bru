@@ -12,8 +12,14 @@ post {
 
 body:json {
   {
-    "refreshToken": "<refresh_token>"
+    "refreshToken": "{{refreshToken}}"
   }
+}
+
+script:post-response {
+  bru.setVar("accessToken", res.body?.item?.accessToken);
+  bru.setVar("refreshToken", res.body?.item?.refreshToken);
+  
 }
 
 settings {

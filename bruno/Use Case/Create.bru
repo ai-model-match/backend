@@ -1,0 +1,32 @@
+meta {
+  name: Create
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://127.0.0.1:8001/api/v1/use-cases
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "code": "new-code",
+    "title": "This is the title of the new Use Case",
+    "description": "This is the goal you want to achive with this new Use Case"
+  }
+}
+
+script:post-response {
+  bru.setVar("firstUseCaseId", res.body?.item?.id);
+  
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,27 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://127.0.0.1:8001/api/v1/use-cases/{{firstUseCaseId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "code": "new--updated-code",
+    "title": "This is the new updated title of the new Use Case",
+    "description": "This is the new updated goal you want to achive with this new Use Case"
+  }
+}
+
+settings {
+  encodeUrl: true
+}

@@ -48,3 +48,29 @@ func (r createUseCaseInputDto) validate() error {
 		validation.Field(&r.Description, validation.Required),
 	)
 }
+
+type updateUseCaseInputDto struct {
+	ID          string  `uri:"useCaseID"`
+	Title       *string `json:"title"`
+	Code        *string `json:"code"`
+	Description *string `json:"description"`
+}
+
+func (r updateUseCaseInputDto) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.ID, validation.Required, is.UUID),
+		validation.Field(&r.Title, validation.NilOrNotEmpty, validation.Length(1, 255)),
+		validation.Field(&r.Code, validation.NilOrNotEmpty, validation.Length(1, 255)),
+		validation.Field(&r.Description, validation.NilOrNotEmpty),
+	)
+}
+
+type deleteUseCaseInputDto struct {
+	ID string `uri:"useCaseID"`
+}
+
+func (r deleteUseCaseInputDto) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.ID, validation.Required, is.UUID),
+	)
+}

@@ -54,7 +54,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 			mm_router.ReturnOk(ctx, &gin.H{"items": items, "totalCount": totalCount, "hasNext": mm_router.HasNext(request.Page, request.PageSize, totalCount)})
 		})
 
-	router.POST(
+	router.GET(
 		"/use-cases/:useCaseID",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
@@ -79,5 +79,98 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 				return
 			}
 			mm_router.ReturnOk(ctx, &gin.H{"item": item})
+		})
+
+	router.POST(
+		"/use-cases",
+		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		func(ctx *gin.Context) {
+			// Input validation
+			var request createUseCaseInputDto
+			mm_router.BindParameters(ctx, &request)
+			if err := request.validate(); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			// Business Logic
+			item, err := r.service.createUseCase(ctx, request)
+			if err == errUseCaseSameCodeAlreadyExists {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
+			// Errors and output handler
+			if err != nil {
+				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				mm_router.ReturnGenericError(ctx)
+				return
+			}
+			mm_router.ReturnOk(ctx, &gin.H{"item": item})
+		})
+
+	router.PUT(
+		"/use-cases/:useCaseID",
+		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		func(ctx *gin.Context) {
+			// Input validation
+			var request updateUseCaseInputDto
+			mm_router.BindParameters(ctx, &request)
+			if err := request.validate(); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			// Business Logic
+			item, err := r.service.updateUseCase(ctx, request)
+			if err == errUseCaseNotFound {
+				mm_router.ReturnNotFoundError(ctx, err)
+				return
+			}
+			if err == errUseCaseSameCodeAlreadyExists {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
+			if err == errUseCaseCodeChangeNotAllowedWhileActive {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
+			// Errors and output handler
+			if err != nil {
+				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				mm_router.ReturnGenericError(ctx)
+				return
+			}
+			mm_router.ReturnOk(ctx, &gin.H{"item": item})
+		})
+
+	router.DELETE(
+		"/use-cases/:useCaseID",
+		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		func(ctx *gin.Context) {
+			// Input validation
+			var request deleteUseCaseInputDto
+			mm_router.BindParameters(ctx, &request)
+			if err := request.validate(); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			// Business Logic
+			_, err := r.service.deleteUseCase(ctx, request)
+			if err == errUseCaseNotFound {
+				mm_router.ReturnNotFoundError(ctx, err)
+				return
+			}
+			if err == errUseCaseCannotBeDeletedWhileActive {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
+			// Errors and output handler
+			if err != nil {
+				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				mm_router.ReturnGenericError(ctx)
+				return
+			}
+			mm_router.ReturnNoContent(ctx)
 		})
 }

@@ -30,7 +30,7 @@ func (r useCaseConsumer) subscribe() {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						zap.L().Error("Panic occured in handling a new message", zap.String("service", "useCase-consumer"))
+						zap.L().Error("Panic occured in handling a new message", zap.String("service", "use-case-consumer"))
 					}
 				}()
 				msg, channelOpen := <-messageChannel
@@ -38,13 +38,13 @@ func (r useCaseConsumer) subscribe() {
 					isChannelOpen = false
 					zap.L().Info(
 						"Channel closed. No more events to listen... quit!",
-						zap.String("service", "useCase-consumer"),
+						zap.String("service", "use-case-consumer"),
 					)
 					return
 				}
 				zap.L().Info(
 					"Received Event Message",
-					zap.String("service", "useCase-consumer"),
+					zap.String("service", "use-case-consumer"),
 					zap.String("event-id", msg.Message.EventID.String()),
 					zap.String("event-type", string(msg.Message.EventType)),
 				)
@@ -62,7 +62,7 @@ func (r useCaseConsumer) subscribe() {
 				}
 				_, err := r.service.createUseCase(msg.Context, useCaseID, input)
 				if err != nil {
-					zap.L().Error("Impossible to create a new useCase", zap.String("service", "useCase-consumer"))
+					zap.L().Error("Impossible to create a new useCase", zap.String("service", "use-case-consumer"))
 					return
 				}*/
 			}()
