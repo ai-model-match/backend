@@ -11,5 +11,6 @@ type PubSubTopic string
 List of available topics.
 */
 const (
-	TopicUseCaseV1 PubSubTopic = "topic/v1/use-case"
+	TopicUseCaseV1     PubSubTopic = "topic/v1/use-case"
+	TopicUseCaseStepV1 PubSubTopic = "topic/v1/use-case-step"
 )

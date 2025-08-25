@@ -18,9 +18,12 @@ type PubSubEventType string
 List of avaiable events can be published and consumed within the pub-sub system.
 */
 const (
-	UseCaseCreatedEvent PubSubEventType = "use-case.created"
-	UseCaseUpdatedEvent PubSubEventType = "use-case.updated"
-	UseCaseDeletedEvent PubSubEventType = "use-case.deleted"
+	UseCaseCreatedEvent     PubSubEventType = "use-case.created"
+	UseCaseUpdatedEvent     PubSubEventType = "use-case.updated"
+	UseCaseDeletedEvent     PubSubEventType = "use-case.deleted"
+	UseCaseStepCreatedEvent PubSubEventType = "use-case-step.created"
+	UseCaseStepUpdatedEvent PubSubEventType = "use-case-step.updated"
+	UseCaseStepDeletedEvent PubSubEventType = "use-case-step.deleted"
 )
 
 /*

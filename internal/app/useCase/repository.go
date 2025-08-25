@@ -60,8 +60,8 @@ func (r useCaseRepository) listUseCases(tx *gorm.DB, limit int, offset int, orde
 	}
 	var entities []useCaseEntity = []useCaseEntity{}
 	for _, model := range models {
-		fscInput := model.toEntity()
-		entities = append(entities, fscInput)
+		entity := model.toEntity()
+		entities = append(entities, entity)
 	}
 	return entities, totalCount, nil
 }

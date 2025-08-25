@@ -13,6 +13,7 @@ import (
 	"github.com/ai-model-match/backend/internal/app/auth"
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
 	"github.com/ai-model-match/backend/internal/app/useCase"
+	"github.com/ai-model-match/backend/internal/app/useCaseStep"
 	"github.com/ai-model-match/backend/internal/pkg/mm_auth"
 	"github.com/ai-model-match/backend/internal/pkg/mm_cors"
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -79,6 +80,7 @@ func main() {
 	healthCheck.Init(envs, dbConnection, v1Api)
 	auth.Init(envs, dbConnection, v1Api)
 	useCase.Init(envs, dbConnection, pubSubAgent, v1Api)
+	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Start the application
 	srv := &http.Server{

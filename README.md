@@ -40,7 +40,7 @@ migrate create -ext sql -dir ./scripts/migrations -seq init schema
 Thanks to it, the tool will create two empty sql files in the `scripts/migrations` folder to apply a new changes to the Database or to revert it.
 Once your migrations are defined, you can apply them locally with this command:
 ``` sh
-migrate -path "./scripts/migrations" -database "postgres://backend:backend@127.0.0.1:54322/backend?sslmode=disable" up
+migrate -path "./scripts/migrations" -database "postgres://aimodelmatch:aimodelmatch@127.0.0.1:54322/aimodelmatch?sslmode=disable" up
 ```
 or simply running this file as a shortcut:
 ``` sh
