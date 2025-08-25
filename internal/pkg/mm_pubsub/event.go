@@ -24,6 +24,9 @@ const (
 	UseCaseStepCreatedEvent PubSubEventType = "use-case-step.created"
 	UseCaseStepUpdatedEvent PubSubEventType = "use-case-step.updated"
 	UseCaseStepDeletedEvent PubSubEventType = "use-case-step.deleted"
+	FlowCreatedEvent        PubSubEventType = "flow.created"
+	FlowUpdatedEvent        PubSubEventType = "flow.updated"
+	FlowDeletedEvent        PubSubEventType = "flow.deleted"
 )
 
 /*

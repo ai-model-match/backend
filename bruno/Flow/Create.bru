@@ -1,0 +1,32 @@
+meta {
+  name: Create
+  type: http
+  seq: 3
+}
+
+post {
+  url: http://127.0.0.1:8001/api/v1/flows
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "useCaseID": "{{firstUseCaseId}}",
+    "title": "Flow A",
+    "description": "The goal of this flow is to improve the latency"
+  }
+}
+
+script:post-response {
+  bru.setVar("firstFlowId", res.body?.item?.id);
+  
+}
+
+settings {
+  encodeUrl: true
+}

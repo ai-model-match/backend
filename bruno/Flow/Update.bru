@@ -1,0 +1,27 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://127.0.0.1:8001/api/v1/flows/{{firstFlowId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "title": "Flow A",
+    "fallback": false,
+    "active": false
+  }
+}
+
+settings {
+  encodeUrl: true
+}

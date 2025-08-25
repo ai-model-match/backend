@@ -13,4 +13,5 @@ List of available topics.
 const (
 	TopicUseCaseV1     PubSubTopic = "topic/v1/use-case"
 	TopicUseCaseStepV1 PubSubTopic = "topic/v1/use-case-step"
+	TopicFlowV1        PubSubTopic = "topic/v1/flow"
 )

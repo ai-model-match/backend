@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ai-model-match/backend/internal/app/auth"
+	"github.com/ai-model-match/backend/internal/app/flow"
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
 	"github.com/ai-model-match/backend/internal/app/useCase"
 	"github.com/ai-model-match/backend/internal/app/useCaseStep"
@@ -81,6 +82,7 @@ func main() {
 	auth.Init(envs, dbConnection, v1Api)
 	useCase.Init(envs, dbConnection, pubSubAgent, v1Api)
 	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
+	flow.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Start the application
 	srv := &http.Server{

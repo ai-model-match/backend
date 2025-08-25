@@ -4,6 +4,15 @@
 # AI Model Match application!
 Thanks to AI Model Match, AI Product Managers will be able to iteratively identify the optimal combination of AI model, prompt, and configuration for their AI product. They will also be able to independently and automatically release and monitor new versions by collecting feedback and tracking requests, minimizing experimentation and implementation time while maximizing the product’s impact and effectiveness.
 
+## Product Notes
+- You cannot have two Use Cases with the same code.
+- Two Steps within the same Use Case cannot have the same code, but the same code can be used in Steps of different Use Cases.
+- You can add, edit, or delete Steps even if the Use Case is Active.
+- You cannot activate a Use Case if it does not have an associated Fallback Flow.
+- You cannot unmark a Flow as Fallback if its related Use Case is Active.
+- You cannot delete a Flow that is marked as Fallback if its related Use Case is Active.
+- Any incoming request not handled by the Rollout Strategy will be served by the Fallback Flow even if it is not Active.
+
 ## Developer Experience
 Below you can find instructions on how to start developing natively your project based on the Backend, leveraging a dockerized external Database.
 
