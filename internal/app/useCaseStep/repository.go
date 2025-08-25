@@ -13,7 +13,7 @@ import (
 type useCaseStepRepositoryInterface interface {
 	checkUseCaseExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
 	listUseCaseSteps(tx *gorm.DB, useCaseID uuid.UUID, limit int, offset int, orderBy useCaseStepOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]useCaseStepEntity, int64, error)
-	getUseCaseStepByID(tx *gorm.DB, useCaseID uuid.UUID, useCaseStepID uuid.UUID, forUpdate bool) (useCaseStepEntity, error)
+	getUseCaseStepByID(tx *gorm.DB, useCaseStepID uuid.UUID, forUpdate bool) (useCaseStepEntity, error)
 	getUseCaseStepByCode(tx *gorm.DB, useCaseID uuid.UUID, useCaseStepCode string, forUpdate bool) (useCaseStepEntity, error)
 	saveUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity) (useCaseStepEntity, error)
 	deleteUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity) (useCaseStepEntity, error)
@@ -82,9 +82,9 @@ func (r useCaseStepRepository) listUseCaseSteps(tx *gorm.DB, useCaseID uuid.UUID
 	return entities, totalCount, nil
 }
 
-func (r useCaseStepRepository) getUseCaseStepByID(tx *gorm.DB, useCaseID uuid.UUID, useCaseStepID uuid.UUID, forUpdate bool) (useCaseStepEntity, error) {
+func (r useCaseStepRepository) getUseCaseStepByID(tx *gorm.DB, useCaseStepID uuid.UUID, forUpdate bool) (useCaseStepEntity, error) {
 	var model *useCaseStepModel
-	query := tx.Where("id = ?", useCaseStepID).Where("use_case_id = ?", useCaseID)
+	query := tx.Where("id = ?", useCaseStepID)
 	if forUpdate {
 		query.Clauses(clause.Locking{Strength: "UPDATE"})
 	}

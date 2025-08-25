@@ -28,7 +28,7 @@ func newUseCaseStepRouter(service useCaseStepServiceInterface) useCaseStepRouter
 // Implementation
 func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 	router.GET(
-		"/use-cases/:useCaseID/steps",
+		"/use-case-steps",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -55,7 +55,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.GET(
-		"/use-cases/:useCaseID/steps/:useCaseStepID",
+		"/use-case-steps/:useCaseStepID",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -86,7 +86,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.POST(
-		"/use-cases/:useCaseID/steps",
+		"/use-case-steps",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -117,7 +117,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.PUT(
-		"/use-cases/:useCaseID/steps/:useCaseStepID",
+		"/use-case-steps/:useCaseStepID",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -152,7 +152,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.DELETE(
-		"/use-cases/:useCaseID/steps/:useCaseStepID",
+		"/use-case-steps/:useCaseStepID",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -165,10 +165,6 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 			}
 			// Business Logic
 			_, err := r.service.deleteUseCaseStep(ctx, request)
-			if err == errUseCaseNotFound {
-				mm_router.ReturnNotFoundError(ctx, err)
-				return
-			}
 			if err == errUseCaseStepNotFound {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return

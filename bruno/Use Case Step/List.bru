@@ -5,12 +5,13 @@ meta {
 }
 
 get {
-  url: http://127.0.0.1:8001/api/v1/use-cases/{{firstUseCaseId}}/steps?page=1&pageSize=10&orderBy=position&orderDir=asc
+  url: http://127.0.0.1:8001/api/v1/use-case-steps?useCaseID={{firstUseCaseId}}&page=1&pageSize=10&orderBy=position&orderDir=asc
   body: none
   auth: bearer
 }
 
 params:query {
+  useCaseID: {{firstUseCaseId}}
   page: 1
   pageSize: 10
   orderBy: position

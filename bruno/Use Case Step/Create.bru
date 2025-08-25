@@ -5,7 +5,7 @@ meta {
 }
 
 post {
-  url: http://127.0.0.1:8001/api/v1/use-cases/{{firstUseCaseId}}/steps
+  url: http://127.0.0.1:8001/api/v1/use-case-steps
   body: json
   auth: bearer
 }
@@ -16,6 +16,7 @@ auth:bearer {
 
 body:json {
   {
+    "useCaseID": "{{firstUseCaseId}}",
     "code": "code-step",
     "title": "This is the title of the new Use Case Step",
     "description": "This is the goal you want to achive with this specific Step"

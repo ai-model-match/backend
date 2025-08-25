@@ -53,16 +53,8 @@ func (s useCaseStepService) listUseCaseSteps(ctx *gin.Context, input ListUseCase
 }
 
 func (s useCaseStepService) getUseCaseStepByID(ctx *gin.Context, input getUseCaseStepInputDto) (useCaseStepEntity, error) {
-	useCaseID := uuid.MustParse(input.UseCaseID)
-	exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
-	if err != nil {
-		return useCaseStepEntity{}, mm_err.ErrGeneric
-	}
-	if !exists {
-		return useCaseStepEntity{}, errUseCaseNotFound
-	}
 	useCaseStepID := uuid.MustParse(input.ID)
-	item, err := s.repository.getUseCaseStepByID(s.storage, useCaseID, useCaseStepID, false)
+	item, err := s.repository.getUseCaseStepByID(s.storage, useCaseStepID, false)
 	if err != nil {
 		return useCaseStepEntity{}, mm_err.ErrGeneric
 	}
@@ -106,7 +98,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseID, useCaseStep.ID, false); err != nil {
+		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
 		return nil
@@ -122,6 +114,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 			EventType: mm_pubsub.UseCaseStepCreatedEvent,
 			EventEntity: mm_pubsub.UseCaseStepEventEntity{
 				ID:          useCaseStep.ID,
+				UseCaseID:   useCaseStep.UseCaseID,
 				Title:       useCaseStep.Title,
 				Code:        useCaseStep.Code,
 				Description: useCaseStep.Description,
@@ -138,18 +131,9 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 	now := time.Now()
 	var useCaseStep useCaseStepEntity
 	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		// Check if the use Case exists
-		useCaseID := uuid.MustParse(input.UseCaseID)
-		exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
-		if err != nil {
-			return mm_err.ErrGeneric
-		}
-		if !exists {
-			return errUseCaseNotFound
-		}
 		// Check if the use Case Step exists
 		useCaseStepID := uuid.MustParse(input.ID)
-		item, err := s.repository.getUseCaseStepByID(tx, useCaseID, useCaseStepID, true)
+		item, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
@@ -158,7 +142,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		}
 		// If the input contains a new code for the use case, check for collision
 		if input.Code != nil {
-			useCaseStepSameCode, err := s.repository.getUseCaseStepByCode(tx, useCaseID, *input.Code, false)
+			useCaseStepSameCode, err := s.repository.getUseCaseStepByCode(tx, item.UseCaseID, *input.Code, false)
 			if err != nil {
 				return mm_err.ErrGeneric
 			}
@@ -189,10 +173,10 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		if _, err = s.repository.saveUseCaseStep(tx, useCaseStep); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
+		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseStep.UseCaseID); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseID, useCaseStep.ID, false); err != nil {
+		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
 		return nil
@@ -209,6 +193,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 			EventType: mm_pubsub.UseCaseStepUpdatedEvent,
 			EventEntity: mm_pubsub.UseCaseStepEventEntity{
 				ID:          useCaseStep.ID,
+				UseCaseID:   useCaseStep.UseCaseID,
 				Title:       useCaseStep.Title,
 				Code:        useCaseStep.Code,
 				Description: useCaseStep.Description,
@@ -225,17 +210,8 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 	var useCaseStep useCaseStepEntity
 	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
-		useCaseID := uuid.MustParse(input.UseCaseID)
-		exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
-		if err != nil {
-			return mm_err.ErrGeneric
-		}
-		if !exists {
-			return errUseCaseNotFound
-		}
-		// Check if the use Case exists
 		useCaseStepID := uuid.MustParse(input.ID)
-		item, err := s.repository.getUseCaseStepByID(tx, useCaseID, useCaseStepID, true)
+		item, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
@@ -246,7 +222,7 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		if _, err := s.repository.deleteUseCaseStep(tx, useCaseStep); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
+		if err := s.repository.recalculateUseCaseStepPosition(tx, item.UseCaseID); err != nil {
 			return mm_err.ErrGeneric
 		}
 		return nil
@@ -263,6 +239,7 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 			EventType: mm_pubsub.UseCaseStepDeletedEvent,
 			EventEntity: mm_pubsub.UseCaseStepEventEntity{
 				ID:          useCaseStep.ID,
+				UseCaseID:   useCaseStep.UseCaseID,
 				Title:       useCaseStep.Title,
 				Code:        useCaseStep.Code,
 				Description: useCaseStep.Description,

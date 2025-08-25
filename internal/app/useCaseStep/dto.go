@@ -8,7 +8,7 @@ import (
 )
 
 type ListUseCaseStepsInputDto struct {
-	UseCaseID string  `uri:"useCaseID"`
+	UseCaseID string  `form:"useCaseID"`
 	Page      int     `form:"page"`
 	PageSize  int     `form:"pageSize"`
 	OrderBy   string  `form:"orderBy"`
@@ -28,19 +28,17 @@ func (r ListUseCaseStepsInputDto) validate() error {
 }
 
 type getUseCaseStepInputDto struct {
-	UseCaseID string `uri:"useCaseID"`
-	ID        string `uri:"useCaseStepID"`
+	ID string `uri:"useCaseStepID"`
 }
 
 func (r getUseCaseStepInputDto) validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
 		validation.Field(&r.ID, validation.Required, is.UUID),
 	)
 }
 
 type createUseCaseStepInputDto struct {
-	UseCaseID   string `uri:"useCaseID"`
+	UseCaseID   string `json:"useCaseID"`
 	Title       string `json:"title"`
 	Code        string `json:"code"`
 	Description string `json:"description"`
@@ -56,7 +54,6 @@ func (r createUseCaseStepInputDto) validate() error {
 }
 
 type updateUseCaseStepInputDto struct {
-	UseCaseID   string  `uri:"useCaseID"`
 	ID          string  `uri:"useCaseStepID"`
 	Title       *string `json:"title"`
 	Code        *string `json:"code"`
@@ -66,7 +63,6 @@ type updateUseCaseStepInputDto struct {
 
 func (r updateUseCaseStepInputDto) validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
 		validation.Field(&r.ID, validation.Required, is.UUID),
 		validation.Field(&r.Title, validation.NilOrNotEmpty, validation.Length(1, 255)),
 		validation.Field(&r.Code, validation.NilOrNotEmpty, validation.Length(1, 255)),
@@ -76,13 +72,11 @@ func (r updateUseCaseStepInputDto) validate() error {
 }
 
 type deleteUseCaseStepInputDto struct {
-	UseCaseID string `uri:"useCaseID"`
-	ID        string `uri:"useCaseStepID"`
+	ID string `uri:"useCaseStepID"`
 }
 
 func (r deleteUseCaseStepInputDto) validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
 		validation.Field(&r.ID, validation.Required, is.UUID),
 	)
 }
