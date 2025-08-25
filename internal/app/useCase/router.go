@@ -134,6 +134,10 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}
+			if err == errUseCaseCannotBeActivatedWithoutFallbackFlow {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
 			// Errors and output handler
 			if err != nil {
 				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))

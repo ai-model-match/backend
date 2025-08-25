@@ -7,8 +7,9 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 ## Product Notes
 - You cannot have two Use Cases with the same code.
 - Two Steps within the same Use Case cannot have the same code, but the same code can be used in Steps of different Use Cases.
-- You can add, edit, or delete Steps even if the Use Case is Active.
+- You cannot delete a Use Case if it is Active.
 - You cannot activate a Use Case if it does not have an associated Fallback Flow.
+- You can add, edit, or delete Steps even if the Use Case is Active.
 - You cannot unmark a Flow as Fallback if its related Use Case is Active.
 - You cannot delete a Flow that is marked as Fallback if its related Use Case is Active.
 - Any incoming request not handled by the Rollout Strategy will be served by the Fallback Flow even if it is not Active.

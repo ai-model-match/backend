@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
+	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -15,6 +16,7 @@ type useCaseRepositoryInterface interface {
 	getUseCaseByCode(tx *gorm.DB, useCaseCode string, forUpdate bool) (useCaseEntity, error)
 	saveUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
 	deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
+	checkFallbackFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
 }
 
 type useCaseRepository struct {
@@ -114,4 +116,17 @@ func (r useCaseRepository) deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (us
 		return useCaseEntity{}, err
 	}
 	return useCase, nil
+}
+
+func (r useCaseRepository) checkFallbackFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error) {
+	var model *flowModel
+	query := tx.Where("use_case_id = ?", useCaseID).Where("fallback is true")
+	result := query.Limit(1).Find(&model)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 || mm_utils.IsEmpty(model) {
+		return false, nil
+	}
+	return model.Fallback, nil
 }

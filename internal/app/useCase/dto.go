@@ -54,6 +54,7 @@ type updateUseCaseInputDto struct {
 	Title       *string `json:"title"`
 	Code        *string `json:"code"`
 	Description *string `json:"description"`
+	Active      *bool   `json:"active"`
 }
 
 func (r updateUseCaseInputDto) validate() error {
@@ -62,6 +63,7 @@ func (r updateUseCaseInputDto) validate() error {
 		validation.Field(&r.Title, validation.NilOrNotEmpty, validation.Length(1, 255)),
 		validation.Field(&r.Code, validation.NilOrNotEmpty, validation.Length(1, 255)),
 		validation.Field(&r.Description, validation.NilOrNotEmpty),
+		validation.Field(&r.Active, validation.In(true, false)),
 	)
 }
 

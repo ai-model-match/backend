@@ -142,6 +142,19 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 		if input.Code != nil {
 			useCase.Code = *input.Code
 		}
+		if input.Active != nil {
+			// Avoid activating Use Case if there isn't any Fallback Flow
+			if !useCase.Active && *input.Active {
+				fallbackExists, err := s.repository.checkFallbackFlowExists(tx, useCase.ID)
+				if err != nil {
+					return mm_err.ErrGeneric
+				}
+				if !fallbackExists {
+					return errUseCaseCannotBeActivatedWithoutFallbackFlow
+				}
+			}
+			useCase.Active = *input.Active
+		}
 		_, err = s.repository.saveUseCase(tx, useCase)
 		if err != nil {
 			return mm_err.ErrGeneric
