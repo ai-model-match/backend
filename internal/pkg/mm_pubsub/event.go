@@ -33,12 +33,31 @@ const (
 )
 
 /*
+Map each event type to a function that returns a pointer to the right struct.
+It is useful for unmarshal stored events and replay
+*/
+var eventEntityFactories = map[PubSubEventType]func() any{
+	UseCaseCreatedEvent:     func() interface{} { return &UseCaseEventEntity{} },
+	UseCaseUpdatedEvent:     func() interface{} { return &UseCaseEventEntity{} },
+	UseCaseDeletedEvent:     func() interface{} { return &UseCaseEventEntity{} },
+	UseCaseStepCreatedEvent: func() interface{} { return &UseCaseStepEventEntity{} },
+	UseCaseStepUpdatedEvent: func() interface{} { return &UseCaseStepEventEntity{} },
+	UseCaseStepDeletedEvent: func() interface{} { return &UseCaseStepEventEntity{} },
+	FlowCreatedEvent:        func() interface{} { return &FlowEventEntity{} },
+	FlowUpdatedEvent:        func() interface{} { return &FlowEventEntity{} },
+	FlowDeletedEvent:        func() interface{} { return &FlowEventEntity{} },
+	FlowStepCreatedEvent:    func() interface{} { return &FlowStepEventEntity{} },
+	FlowStepUpdatedEvent:    func() interface{} { return &FlowStepEventEntity{} },
+	FlowStepDeletedEvent:    func() interface{} { return &FlowStepEventEntity{} },
+}
+
+/*
 PubSubEvent represents a generic struct for events. All the events must be structured in this way,
 ensuring the payload of the event itself is stored inside the EventEntity.
 */
 type PubSubEvent struct {
-	EventID     uuid.UUID
-	EventTime   time.Time
-	EventType   PubSubEventType
-	EventEntity interface{}
+	EventID     uuid.UUID       `json:"eventId"`
+	EventTime   time.Time       `json:"eventTime"`
+	EventType   PubSubEventType `json:"eventType"`
+	EventEntity interface{}     `json:"eventEntity"`
 }

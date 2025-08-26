@@ -14,7 +14,7 @@ type useCaseRepositoryInterface interface {
 	listUseCases(tx *gorm.DB, limit int, offset int, orderBy useCaseOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]useCaseEntity, int64, error)
 	getUseCaseByID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) (useCaseEntity, error)
 	getUseCaseByCode(tx *gorm.DB, useCaseCode string, forUpdate bool) (useCaseEntity, error)
-	saveUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
+	saveUseCase(tx *gorm.DB, useCase useCaseEntity, operation mm_db.SaveOperation) (useCaseEntity, error)
 	deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
 	checkFallbackFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
 }
@@ -100,9 +100,17 @@ func (r useCaseRepository) getUseCaseByCode(tx *gorm.DB, useCaseCode string, for
 	return model.toEntity(), nil
 }
 
-func (r useCaseRepository) saveUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error) {
+func (r useCaseRepository) saveUseCase(tx *gorm.DB, useCase useCaseEntity, operation mm_db.SaveOperation) (useCaseEntity, error) {
 	var model = useCaseModel(useCase)
-	err := tx.Save(model).Error
+	var err error
+	switch operation {
+	case mm_db.Create:
+		err = tx.Create(model).Error
+	case mm_db.Update:
+		err = tx.Updates(model).Error
+	case mm_db.CreateIfNotExists:
+		err = tx.Save(model).Error
+	}
 	if err != nil {
 		return useCaseEntity{}, err
 	}

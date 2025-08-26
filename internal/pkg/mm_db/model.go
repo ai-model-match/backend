@@ -18,3 +18,17 @@ AvailableOrderDir represents a list of available order directions. It is general
 inside input DTOs to validate the input parameters provided during an API call.
 */
 var AvailableOrderDir = []interface{}{Asc, Desc}
+
+/*
+SaveOperation represents the type of saving to perform on Dabatase
+*/
+type SaveOperation string
+
+/*
+Declaration of all operations available while saving record on Database
+*/
+const (
+	Create            SaveOperation = "create"
+	Update            SaveOperation = "update"
+	CreateIfNotExists SaveOperation = "create-if-not-exists"
+)

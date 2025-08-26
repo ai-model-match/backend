@@ -52,8 +52,8 @@ func (r flowStepConsumer) subscribe() {
 					return
 				}
 
-				event := msg.Message.EventEntity.(mm_pubsub.UseCaseStepEventEntity)
-				if err := r.service.createStepsForAllFlowsOfUseCase(msg.Context, event.UseCaseID); err != nil {
+				event := msg.Message.EventEntity.(*mm_pubsub.UseCaseStepEventEntity)
+				if err := r.service.createStepsForAllFlowsOfUseCase(event.UseCaseID); err != nil {
 					zap.L().Error("Impossible to create all flowSteps for the new Use Case Step", zap.String("service", "flow-step-consumer"))
 					return
 				}
@@ -90,8 +90,8 @@ func (r flowStepConsumer) subscribe() {
 					return
 				}
 
-				event := msg.Message.EventEntity.(mm_pubsub.FlowEventEntity)
-				if err := r.service.createStepsForAllFlowsOfUseCase(msg.Context, event.UseCaseID); err != nil {
+				event := msg.Message.EventEntity.(*mm_pubsub.FlowEventEntity)
+				if err := r.service.createStepsForAllFlowsOfUseCase(event.UseCaseID); err != nil {
 					zap.L().Error("Impossible to create all flowSteps for the new Flow", zap.String("service", "flow-step-consumer"))
 					return
 				}

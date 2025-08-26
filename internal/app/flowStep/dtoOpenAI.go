@@ -37,7 +37,6 @@ type openAIRequestDTO struct {
 
 // Validate validates the openAIRequestDTO based on modality
 func (r openAIRequestDTO) validate() error {
-	// Top-level validation
 	if err := validation.ValidateStruct(&r,
 		validation.Field(&r.Modality, validation.Required, validation.In(
 			ModalityChat, ModalityImage, ModalityAudio, ModalityFile, ModalityFineTune,
@@ -126,7 +125,7 @@ type imageGenerationRequestDTO struct {
 
 func (r imageGenerationRequestDTO) validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.Prompt, validation.Required, validation.Length(1, 1000)),
+		validation.Field(&r.Prompt, validation.Required, validation.Length(1, 0)),
 	)
 }
 

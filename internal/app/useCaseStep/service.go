@@ -78,52 +78,46 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 		UpdatedAt:   now,
 	}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
-		if err != nil {
+		if exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID); err != nil {
 			return mm_err.ErrGeneric
-		}
-		if !exists {
+		} else if !exists {
 			return errUseCaseNotFound
 		}
-		item, err := s.repository.getUseCaseStepByCode(tx, useCaseID, input.Code, false)
-		if err != nil {
+		if item, err := s.repository.getUseCaseStepByCode(tx, useCaseID, input.Code, false); err != nil {
 			return mm_err.ErrGeneric
-		}
-		if !mm_utils.IsEmpty(item) {
+		} else if !mm_utils.IsEmpty(item) {
 			return errUseCaseStepSameCodeAlreadyExists
-		}
-		if _, err = s.repository.saveUseCaseStep(tx, useCaseStep); err != nil {
+		} else if _, err = s.repository.saveUseCaseStep(tx, useCaseStep, mm_db.Create); err != nil {
+			return mm_err.ErrGeneric
+		} else if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
+			return mm_err.ErrGeneric
+		} else if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
-			return mm_err.ErrGeneric
-		}
-		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
-			return mm_err.ErrGeneric
+		if err := s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.UseCaseStepCreatedEvent,
+				EventEntity: &mm_pubsub.UseCaseStepEventEntity{
+					ID:          useCaseStep.ID,
+					UseCaseID:   useCaseStep.UseCaseID,
+					Title:       useCaseStep.Title,
+					Code:        useCaseStep.Code,
+					Description: useCaseStep.Description,
+					Position:    useCaseStep.Position,
+					CreatedAt:   useCaseStep.CreatedAt,
+					UpdatedAt:   useCaseStep.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseStepEntity{}, errTransaction
 	}
-	go s.pubSubAgent.Publish(mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.UseCaseStepCreatedEvent,
-			EventEntity: mm_pubsub.UseCaseStepEventEntity{
-				ID:          useCaseStep.ID,
-				UseCaseID:   useCaseStep.UseCaseID,
-				Title:       useCaseStep.Title,
-				Code:        useCaseStep.Code,
-				Description: useCaseStep.Description,
-				Position:    useCaseStep.Position,
-				CreatedAt:   useCaseStep.CreatedAt,
-				UpdatedAt:   useCaseStep.UpdatedAt,
-			},
-		},
-	})
 	return useCaseStep, nil
 }
 
@@ -170,7 +164,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 			}
 			useCaseStep.Position = *input.Position
 		}
-		if _, err = s.repository.saveUseCaseStep(tx, useCaseStep); err != nil {
+		if _, err = s.repository.saveUseCaseStep(tx, useCaseStep, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
 		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseStep.UseCaseID); err != nil {
@@ -179,30 +173,32 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
+		// Send an event of useCaseStep updated
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.UseCaseStepUpdatedEvent,
+				EventEntity: &mm_pubsub.UseCaseStepEventEntity{
+					ID:          useCaseStep.ID,
+					UseCaseID:   useCaseStep.UseCaseID,
+					Title:       useCaseStep.Title,
+					Code:        useCaseStep.Code,
+					Description: useCaseStep.Description,
+					Position:    useCaseStep.Position,
+					CreatedAt:   useCaseStep.CreatedAt,
+					UpdatedAt:   useCaseStep.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err_transaction != nil {
 		return useCaseStepEntity{}, err_transaction
 	}
-	// Send an event of useCaseStep updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.UseCaseStepUpdatedEvent,
-			EventEntity: mm_pubsub.UseCaseStepEventEntity{
-				ID:          useCaseStep.ID,
-				UseCaseID:   useCaseStep.UseCaseID,
-				Title:       useCaseStep.Title,
-				Code:        useCaseStep.Code,
-				Description: useCaseStep.Description,
-				Position:    useCaseStep.Position,
-				CreatedAt:   useCaseStep.CreatedAt,
-				UpdatedAt:   useCaseStep.UpdatedAt,
-			},
-		},
-	})
+
 	return useCaseStep, nil
 }
 
@@ -225,29 +221,31 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		if err := s.repository.recalculateUseCaseStepPosition(tx, item.UseCaseID); err != nil {
 			return mm_err.ErrGeneric
 		}
+
+		// Send an event of useCaseStep deleted
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.UseCaseStepDeletedEvent,
+				EventEntity: &mm_pubsub.UseCaseStepEventEntity{
+					ID:          useCaseStep.ID,
+					UseCaseID:   useCaseStep.UseCaseID,
+					Title:       useCaseStep.Title,
+					Code:        useCaseStep.Code,
+					Description: useCaseStep.Description,
+					Position:    useCaseStep.Position,
+					CreatedAt:   useCaseStep.CreatedAt,
+					UpdatedAt:   useCaseStep.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err_transaction != nil {
 		return useCaseStepEntity{}, err_transaction
 	}
-	// Send an event of useCaseStep updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.UseCaseStepDeletedEvent,
-			EventEntity: mm_pubsub.UseCaseStepEventEntity{
-				ID:          useCaseStep.ID,
-				UseCaseID:   useCaseStep.UseCaseID,
-				Title:       useCaseStep.Title,
-				Code:        useCaseStep.Code,
-				Description: useCaseStep.Description,
-				Position:    useCaseStep.Position,
-				CreatedAt:   useCaseStep.CreatedAt,
-				UpdatedAt:   useCaseStep.UpdatedAt,
-			},
-		},
-	})
 	return useCaseStep, nil
 }

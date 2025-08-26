@@ -4,7 +4,16 @@ import (
 	"os"
 
 	"github.com/ai-model-match/backend/cmd/cli/commands"
+	"github.com/ai-model-match/backend/internal/app/auth"
+	"github.com/ai-model-match/backend/internal/app/flow"
+	"github.com/ai-model-match/backend/internal/app/flowStep"
+	"github.com/ai-model-match/backend/internal/app/healthCheck"
+	"github.com/ai-model-match/backend/internal/app/useCase"
+	"github.com/ai-model-match/backend/internal/app/useCaseStep"
+	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_env"
+	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
+	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli"
 	"go.uber.org/zap"
 )
@@ -16,7 +25,7 @@ Please check in the ´commands´ folder all the available commands.
 
 To execute a command from the main directory of the project
 you can run ´go run ./cmd/cli/cli.go <command-name>´
-E.g. ´go run ./cmd/cli/cli.go default-command´
+E.g. ´go run ./cmd/cli/cli.go event-replay´
 */
 func main() {
 	// Set default Timezone
@@ -29,21 +38,52 @@ func main() {
 		logger = zap.Must(zap.NewDevelopment())
 	}
 	zap.ReplaceGlobals(logger)
+	// DB Connection
+	dbConnection := mm_db.NewDatabaseConnection(
+		envs.DbHost,
+		envs.DbUsername,
+		envs.DbPassword,
+		envs.DbName,
+		envs.DbPort,
+		envs.DbSslMode,
+		envs.DbLogSlowQueryThreshold,
+		envs.AppMode,
+	)
+	// PUB-SUB agent
+	pubSubAgent := mm_pubsub.NewPubSubAgent()
 	// Start CLI
 	app := cli.NewApp()
 	app.Name = "Backend"
 	app.Usage = "CLI"
 
+	//Init
+	r := gin.Default()
+	v1Api := r.Group("cli")
+	healthCheck.Init(envs, dbConnection, v1Api)
+	auth.Init(envs, dbConnection, v1Api)
+	useCase.Init(envs, dbConnection, pubSubAgent, v1Api)
+	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
+	flow.Init(envs, dbConnection, pubSubAgent, v1Api)
+	flowStep.Init(envs, dbConnection, pubSubAgent, v1Api)
+
 	// Define list of commands available in the CLI
 	app.Commands = []cli.Command{
 		{
-			Name:   "default-command",
-			Action: commands.DefaultCommand,
-			Usage:  "Call a defaul command for the purpose of see how it works",
+			Name: "event-replay",
+			Action: func(c *cli.Context) error {
+				return commands.EventReplayCommand(c, pubSubAgent, dbConnection)
+			},
+			Usage: "Replay historical events optionally filtered by topic and start date",
 			Flags: []cli.Flag{
 				&cli.StringFlag{
-					Name:  "user-id",
-					Usage: "The ID of the user",
+					Name:     "start-from",
+					Required: false,
+					Usage:    "Optional ISO 8601 date to start replay from",
+				},
+				&cli.StringFlag{
+					Name:     "topic-name",
+					Required: false,
+					Usage:    "Optional topic name to filter events",
 				},
 			},
 		},

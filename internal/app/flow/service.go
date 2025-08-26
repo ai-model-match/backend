@@ -36,11 +36,9 @@ func newFlowService(storage *gorm.DB, pubSubAgent *mm_pubsub.PubSubAgent, reposi
 
 func (s flowService) listFlows(ctx *gin.Context, input ListFlowsInputDto) ([]flowEntity, int64, error) {
 	useCaseID := uuid.MustParse(input.UseCaseID)
-	exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
-	if err != nil {
+	if exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID); err != nil {
 		return []flowEntity{}, 0, mm_err.ErrGeneric
-	}
-	if !exists {
+	} else if !exists {
 		return []flowEntity{}, 0, errUseCaseNotFound
 	}
 	limit, offset := mm_utils.PagePageSizeToLimitOffset(input.Page, input.PageSize)
@@ -84,32 +82,35 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 		if !exists {
 			return errUseCaseNotFound
 		}
-		if _, err = s.repository.saveFlow(tx, flow); err != nil {
+		if _, err = s.repository.saveFlow(tx, flow, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
+		}
+		// Send an event of flow created
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.FlowCreatedEvent,
+				EventEntity: &mm_pubsub.FlowEventEntity{
+					ID:          flow.ID,
+					UseCaseID:   flow.UseCaseID,
+					Active:      flow.Active,
+					Title:       flow.Title,
+					Description: flow.Description,
+					Fallback:    flow.Fallback,
+					CreatedAt:   flow.CreatedAt,
+					UpdatedAt:   flow.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return flowEntity{}, errTransaction
 	}
-	go s.pubSubAgent.Publish(mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.FlowCreatedEvent,
-			EventEntity: mm_pubsub.FlowEventEntity{
-				ID:          flow.ID,
-				UseCaseID:   flow.UseCaseID,
-				Active:      flow.Active,
-				Title:       flow.Title,
-				Description: flow.Description,
-				Fallback:    flow.Fallback,
-				CreatedAt:   flow.CreatedAt,
-				UpdatedAt:   flow.UpdatedAt,
-			},
-		},
-	})
+
 	return flow, nil
 }
 
@@ -141,47 +142,47 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 		if input.Fallback != nil {
 			// If you are trying to remove the fallback, cannot be done if the use case is active
 			if flow.Fallback && !*input.Fallback {
-				isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID)
-				if err != nil {
+				if isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID); err != nil {
 					return err
-				}
-				if isActive {
+				} else if isActive {
 					return errFlowCannotRemoveFallbackWithActiveUseCase
 				}
 			}
 			flow.Fallback = *input.Fallback
 		}
-		if _, err = s.repository.saveFlow(tx, flow); err != nil {
-			return mm_err.ErrGeneric
-		}
-		if err = s.repository.makeFallbackConsistent(tx, flow); err != nil {
+		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// If this flow is the fallback one, remove fallback from others if any
+		if err = s.repository.makeFallbackConsistent(tx, flow); err != nil {
+			return mm_err.ErrGeneric
+		}
+		// Send an event of flow updated
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.FlowUpdatedEvent,
+				EventEntity: &mm_pubsub.FlowEventEntity{
+					ID:          flow.ID,
+					UseCaseID:   flow.UseCaseID,
+					Active:      flow.Active,
+					Title:       flow.Title,
+					Description: flow.Description,
+					Fallback:    flow.Fallback,
+					CreatedAt:   flow.CreatedAt,
+					UpdatedAt:   flow.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err_transaction != nil {
 		return flowEntity{}, err_transaction
 	}
-	// Send an event of flow updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.FlowUpdatedEvent,
-			EventEntity: mm_pubsub.FlowEventEntity{
-				ID:          flow.ID,
-				UseCaseID:   flow.UseCaseID,
-				Active:      flow.Active,
-				Title:       flow.Title,
-				Description: flow.Description,
-				Fallback:    flow.Fallback,
-				CreatedAt:   flow.CreatedAt,
-				UpdatedAt:   flow.UpdatedAt,
-			},
-		},
-	})
+
 	return flow, nil
 }
 
@@ -199,40 +200,39 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 		flow = item
 		// Avoid to delete a Flow if it is a fallback and the use case is active
 		if flow.Fallback {
-			isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID)
-			if err != nil {
+			if isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID); err != nil {
 				return err
-			}
-			if isActive {
+			} else if isActive {
 				return errFlowCannotDeleteIfFallbackAndUseCaseActive
 			}
 		}
 		if _, err := s.repository.deleteFlow(tx, flow); err != nil {
 			return mm_err.ErrGeneric
 		}
+		// Send an event of flow deleted
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.FlowDeletedEvent,
+				EventEntity: &mm_pubsub.FlowEventEntity{
+					ID:          flow.ID,
+					UseCaseID:   flow.UseCaseID,
+					Active:      flow.Active,
+					Title:       flow.Title,
+					Description: flow.Description,
+					Fallback:    flow.Fallback,
+					CreatedAt:   flow.CreatedAt,
+					UpdatedAt:   flow.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err_transaction != nil {
 		return flowEntity{}, err_transaction
 	}
-	// Send an event of flow updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.FlowDeletedEvent,
-			EventEntity: mm_pubsub.FlowEventEntity{
-				ID:          flow.ID,
-				UseCaseID:   flow.UseCaseID,
-				Active:      flow.Active,
-				Title:       flow.Title,
-				Description: flow.Description,
-				Fallback:    flow.Fallback,
-				CreatedAt:   flow.CreatedAt,
-				UpdatedAt:   flow.UpdatedAt,
-			},
-		},
-	})
 	return flow, nil
 }

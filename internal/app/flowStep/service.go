@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_err"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
@@ -17,7 +18,7 @@ type flowStepServiceInterface interface {
 	listFlowSteps(ctx *gin.Context, input ListFlowStepsInputDto) ([]flowStepEntity, int64, error)
 	getFlowStepByID(ctx *gin.Context, input getFlowStepInputDto) (flowStepEntity, error)
 	updateFlowStep(ctx *gin.Context, input updateFlowStepInputDto) (flowStepEntity, error)
-	createStepsForAllFlowsOfUseCase(ctx *gin.Context, useCaseID uuid.UUID) error
+	createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error
 }
 
 type flowStepService struct {
@@ -69,22 +70,18 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		flowStepID := uuid.MustParse(input.ID)
-		item, err := s.repository.getFlowStepByID(tx, flowStepID, true)
-		if err != nil {
+		if item, err := s.repository.getFlowStepByID(tx, flowStepID, true); err != nil {
 			return mm_err.ErrGeneric
-		}
-		if mm_utils.IsEmpty(item) {
+		} else if mm_utils.IsEmpty(item) {
 			return errFlowStepNotFound
+		} else {
+			flowStep = item
 		}
-
-		// Update flowStep information based on inputs
-		flowStep = item
-		configuration, err := json.Marshal(input.Configuration)
-		if err != nil {
+		if configuration, err := json.Marshal(input.Configuration); err != nil {
 			return errFlowStepWrongConfigFormat
+		} else {
+			flowStep.Configuration = configuration
 		}
-
-		flowStep.Configuration = configuration
 		// Find placeholders to store
 		placeholders := []string{}
 		re := regexp.MustCompile(`\\u003c\\u003c([A-Za-z0-9_-]+)\\u003e\\u003e`)
@@ -97,40 +94,38 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 		pl, _ := json.Marshal(placeholders)
 		flowStep.Placeholders = json.RawMessage(pl)
 		flowStep.UpdatedAt = now
-		if _, err = s.repository.saveFlowStep(tx, flowStep); err != nil {
+		if _, err := s.repository.saveFlowStep(tx, flowStep, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
-		}
-		if flowStep, err = s.repository.getFlowStepByID(tx, flowStep.ID, false); err != nil {
+		} else if flowStep, err = s.repository.getFlowStepByID(tx, flowStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
+		} else if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.FlowStepUpdatedEvent,
+				EventEntity: &mm_pubsub.FlowStepEventEntity{
+					ID:            flowStep.ID,
+					FlowID:        flowStep.FlowID,
+					UseCaseID:     flowStep.UseCaseID,
+					UseCaseStepID: flowStep.UseCaseStepID,
+					CreatedAt:     flowStep.CreatedAt,
+					UpdatedAt:     flowStep.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
 		}
 		return nil
 	})
 	if err_transaction != nil {
 		return flowStepEntity{}, err_transaction
 	}
-	// Send an event of flowStep updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.FlowStepUpdatedEvent,
-			EventEntity: mm_pubsub.FlowStepEventEntity{
-				ID:            flowStep.ID,
-				FlowID:        flowStep.FlowID,
-				UseCaseID:     flowStep.UseCaseID,
-				UseCaseStepID: flowStep.UseCaseStepID,
-				CreatedAt:     flowStep.CreatedAt,
-				UpdatedAt:     flowStep.UpdatedAt,
-			},
-		},
-	})
+
 	return flowStep, nil
 }
 
-func (s flowStepService) createStepsForAllFlowsOfUseCase(ctx *gin.Context, useCaseID uuid.UUID) error {
+func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error {
 	now := time.Now()
-	flowSteps := []flowStepEntity{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		missingFlows, err := s.repository.getAllMissingFlowSteps(s.storage, useCaseID)
 		if err != nil {
@@ -149,35 +144,34 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(ctx *gin.Context, useCa
 				CreatedAt:     now,
 				UpdatedAt:     now,
 			}
-			if _, err = s.repository.saveFlowStep(tx, flowStep); err != nil {
+			if _, err = s.repository.saveFlowStep(tx, flowStep, mm_db.Create); err != nil {
 				return mm_err.ErrGeneric
 			}
-			flowSteps = append(flowSteps, flowStep)
+			// Send an event of flowStep created
+			if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
+				Message: mm_pubsub.PubSubEvent{
+					EventID:   uuid.New(),
+					EventTime: time.Now(),
+					EventType: mm_pubsub.FlowStepCreatedEvent,
+					EventEntity: &mm_pubsub.FlowStepEventEntity{
+						ID:            flowStep.ID,
+						FlowID:        flowStep.FlowID,
+						UseCaseID:     flowStep.UseCaseID,
+						UseCaseStepID: flowStep.UseCaseStepID,
+						Configuration: flowStep.Configuration,
+						Placeholders:  flowStep.Placeholders,
+						CreatedAt:     flowStep.CreatedAt,
+						UpdatedAt:     flowStep.UpdatedAt,
+					},
+				},
+			}); err != nil {
+				return err
+			}
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return errTransaction
-	}
-	for _, flowStep := range flowSteps {
-		go s.pubSubAgent.Publish(mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
-			Context: ctx.Copy(),
-			Message: mm_pubsub.PubSubEvent{
-				EventID:   uuid.New(),
-				EventTime: time.Now(),
-				EventType: mm_pubsub.FlowStepCreatedEvent,
-				EventEntity: mm_pubsub.FlowStepEventEntity{
-					ID:            flowStep.ID,
-					FlowID:        flowStep.FlowID,
-					UseCaseID:     flowStep.UseCaseID,
-					UseCaseStepID: flowStep.UseCaseStepID,
-					Configuration: flowStep.Configuration,
-					Placeholders:  flowStep.Placeholders,
-					CreatedAt:     flowStep.CreatedAt,
-					UpdatedAt:     flowStep.UpdatedAt,
-				},
-			},
-		})
 	}
 	return nil
 }

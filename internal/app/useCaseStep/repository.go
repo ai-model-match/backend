@@ -15,7 +15,7 @@ type useCaseStepRepositoryInterface interface {
 	listUseCaseSteps(tx *gorm.DB, useCaseID uuid.UUID, limit int, offset int, orderBy useCaseStepOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]useCaseStepEntity, int64, error)
 	getUseCaseStepByID(tx *gorm.DB, useCaseStepID uuid.UUID, forUpdate bool) (useCaseStepEntity, error)
 	getUseCaseStepByCode(tx *gorm.DB, useCaseID uuid.UUID, useCaseStepCode string, forUpdate bool) (useCaseStepEntity, error)
-	saveUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity) (useCaseStepEntity, error)
+	saveUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity, operation mm_db.SaveOperation) (useCaseStepEntity, error)
 	deleteUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity) (useCaseStepEntity, error)
 	recalculateUseCaseStepPosition(tx *gorm.DB, useCaseID uuid.UUID) error
 }
@@ -114,9 +114,17 @@ func (r useCaseStepRepository) getUseCaseStepByCode(tx *gorm.DB, useCaseID uuid.
 	return model.toEntity(), nil
 }
 
-func (r useCaseStepRepository) saveUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity) (useCaseStepEntity, error) {
+func (r useCaseStepRepository) saveUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity, operation mm_db.SaveOperation) (useCaseStepEntity, error) {
 	var model = useCaseStepModel(useCaseStep)
-	err := tx.Save(model).Error
+	var err error
+	switch operation {
+	case mm_db.Create:
+		err = tx.Create(model).Error
+	case mm_db.Update:
+		err = tx.Updates(model).Error
+	case mm_db.CreateIfNotExists:
+		err = tx.Save(model).Error
+	}
 	if err != nil {
 		return useCaseStepEntity{}, err
 	}

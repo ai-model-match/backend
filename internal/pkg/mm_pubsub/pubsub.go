@@ -1,11 +1,13 @@
 package mm_pubsub
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync"
+	"time"
 
-	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 /*
@@ -14,7 +16,6 @@ It contains the Event with a pre-defined structured and the context of the call.
 */
 type PubSubMessage struct {
 	Message PubSubEvent
-	Context *gin.Context
 }
 
 /*
@@ -44,7 +45,36 @@ func NewPubSubAgent() *PubSubAgent {
 /*
 Publish a message to a specific topic. The message will be sent to all the active channels.
 */
-func (b *PubSubAgent) Publish(pubsubTopic PubSubTopic, msg PubSubMessage) {
+func (b *PubSubAgent) Publish(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
+	if err := b.storeMessage(tx, pubsubTopic, msg); err != nil {
+		return err
+	}
+	go b.publishMessageToTopic(pubsubTopic, msg)
+	return nil
+}
+
+/*
+Persist the new message on DB
+*/
+func (b *PubSubAgent) storeMessage(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
+	rawMessage, err := json.Marshal(msg.Message)
+	if err != nil {
+		return err
+	}
+	model := eventModel{
+		ID:        msg.Message.EventID,
+		Topic:     string(pubsubTopic),
+		EventType: string(msg.Message.EventType),
+		EventDate: msg.Message.EventTime,
+		EventBody: rawMessage,
+	}
+	return tx.Create(model).Error
+}
+
+/*
+Publish a message to a specific topic. The message will be sent to all the active channels.
+*/
+func (b *PubSubAgent) publishMessageToTopic(pubsubTopic PubSubTopic, msg PubSubMessage) {
 	topic := string(pubsubTopic)
 	zap.L().Info(
 		fmt.Sprintf("Dispatching %s event on Topic %s", msg.Message.EventType, topic),
@@ -58,10 +88,69 @@ func (b *PubSubAgent) Publish(pubsubTopic PubSubTopic, msg PubSubMessage) {
 	if b.closed {
 		return
 	}
-
 	for _, ch := range b.subs[topic] {
 		ch <- msg
 	}
+}
+
+/*
+Replay historical events optionally filtered by topic and start date
+*/
+func (b *PubSubAgent) ReplayMessages(tx *gorm.DB, topicName *PubSubTopic, startFromTime *time.Time) error {
+	// Create query
+	query := tx.Model(eventModel{})
+	if topicName != nil {
+		query.Where("topic = ?", topicName)
+	}
+	if startFromTime != nil {
+		query.Where("event_date >= ?", startFromTime)
+	}
+	query.Order("event_date ASC")
+	rows, err := query.Rows()
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	// Process rows with SCAN approach to limit memory
+	for rows.Next() {
+		// Read the row
+		var model eventModel
+		if err := tx.ScanRows(rows, &model); err != nil {
+			return err
+		}
+		// Unmarhal the stored event
+		var body PubSubEvent
+		if err := json.Unmarshal(model.EventBody, &body); err != nil {
+			return err
+		}
+		// Convert EventEntity to raw bytes for further unmarshaling
+		entityBytes, err := json.Marshal(body.EventEntity)
+		if err != nil {
+			return err
+		}
+		// Use factory to get typed struct
+		factory, ok := eventEntityFactories[body.EventType]
+		if !ok {
+			return fmt.Errorf("unsupported event type: %s", body.EventType)
+		}
+		entityPtr := factory()
+		if err := json.Unmarshal(entityBytes, entityPtr); err != nil {
+			return err
+		}
+		// Recreate new typed body
+		newBody := PubSubEvent{
+			EventID:     body.EventID,
+			EventTime:   body.EventTime,
+			EventType:   body.EventType,
+			EventEntity: entityPtr,
+		}
+		message := PubSubMessage{
+			Message: newBody,
+		}
+		// Resend the event, without re-storing it, in SYNCHRONOUS way
+		b.publishMessageToTopic(PubSubTopic(model.Topic), message)
+	}
+	return nil
 }
 
 /*

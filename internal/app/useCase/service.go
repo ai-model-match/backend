@@ -74,32 +74,34 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 		if !mm_utils.IsEmpty(item) {
 			return errUseCaseSameCodeAlreadyExists
 		}
-		_, err = s.repository.saveUseCase(tx, useCase)
+		_, err = s.repository.saveUseCase(tx, useCase, mm_db.Create)
 		if err != nil {
 			return mm_err.ErrGeneric
+		}
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.UseCaseCreatedEvent,
+				EventEntity: &mm_pubsub.UseCaseEventEntity{
+					ID:          useCase.ID,
+					Title:       useCase.Title,
+					Code:        useCase.Code,
+					Description: useCase.Description,
+					Active:      useCase.Active,
+					CreatedAt:   useCase.CreatedAt,
+					UpdatedAt:   useCase.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseEntity{}, errTransaction
 	}
-	go s.pubSubAgent.Publish(mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.UseCaseCreatedEvent,
-			EventEntity: mm_pubsub.UseCaseEventEntity{
-				ID:          useCase.ID,
-				Title:       useCase.Title,
-				Code:        useCase.Code,
-				Description: useCase.Description,
-				Active:      useCase.Active,
-				CreatedAt:   useCase.CreatedAt,
-				UpdatedAt:   useCase.UpdatedAt,
-			},
-		},
-	})
+
 	return useCase, nil
 }
 
@@ -155,33 +157,35 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 			}
 			useCase.Active = *input.Active
 		}
-		_, err = s.repository.saveUseCase(tx, useCase)
+		_, err = s.repository.saveUseCase(tx, useCase, mm_db.Update)
 		if err != nil {
 			return mm_err.ErrGeneric
+		}
+		// Send an event of useCase updated
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.UseCaseUpdatedEvent,
+				EventEntity: &mm_pubsub.UseCaseEventEntity{
+					ID:          useCase.ID,
+					Title:       useCase.Title,
+					Code:        useCase.Code,
+					Description: useCase.Description,
+					Active:      useCase.Active,
+					CreatedAt:   useCase.CreatedAt,
+					UpdatedAt:   useCase.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
 		}
 		return nil
 	})
 	if err_transaction != nil {
 		return useCaseEntity{}, err_transaction
 	}
-	// Send an event of useCase updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.UseCaseUpdatedEvent,
-			EventEntity: mm_pubsub.UseCaseEventEntity{
-				ID:          useCase.ID,
-				Title:       useCase.Title,
-				Code:        useCase.Code,
-				Description: useCase.Description,
-				Active:      useCase.Active,
-				CreatedAt:   useCase.CreatedAt,
-				UpdatedAt:   useCase.UpdatedAt,
-			},
-		},
-	})
+
 	return useCase, nil
 }
 
@@ -203,28 +207,30 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 		}
 		useCase = item
 		s.repository.deleteUseCase(tx, useCase)
+		// Send an event of useCase deleted
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.UseCaseDeletedEvent,
+				EventEntity: &mm_pubsub.UseCaseEventEntity{
+					ID:          useCase.ID,
+					Title:       useCase.Title,
+					Code:        useCase.Code,
+					Description: useCase.Description,
+					Active:      useCase.Active,
+					CreatedAt:   useCase.CreatedAt,
+					UpdatedAt:   useCase.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err_transaction != nil {
 		return useCaseEntity{}, err_transaction
 	}
-	// Send an event of useCase updated
-	go s.pubSubAgent.Publish(mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
-		Context: ctx.Copy(),
-		Message: mm_pubsub.PubSubEvent{
-			EventID:   uuid.New(),
-			EventTime: time.Now(),
-			EventType: mm_pubsub.UseCaseDeletedEvent,
-			EventEntity: mm_pubsub.UseCaseEventEntity{
-				ID:          useCase.ID,
-				Title:       useCase.Title,
-				Code:        useCase.Code,
-				Description: useCase.Description,
-				Active:      useCase.Active,
-				CreatedAt:   useCase.CreatedAt,
-				UpdatedAt:   useCase.UpdatedAt,
-			},
-		},
-	})
+
 	return useCase, nil
 }

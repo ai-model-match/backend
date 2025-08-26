@@ -1,6 +1,7 @@
 package flowStep
 
 import (
+	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -12,7 +13,7 @@ type flowStepRepositoryInterface interface {
 	checkUseCaseStepExists(tx *gorm.DB, useCaseStepID uuid.UUID) (bool, error)
 	listFlowSteps(tx *gorm.DB, flowID uuid.UUID, limit int, offset int, forUpdate bool) ([]flowStepEntity, int64, error)
 	getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID, forUpdate bool) (flowStepEntity, error)
-	saveFlowStep(tx *gorm.DB, flowStep flowStepEntity) (flowStepEntity, error)
+	saveFlowStep(tx *gorm.DB, flowStep flowStepEntity, operation mm_db.SaveOperation) (flowStepEntity, error)
 	getAllMissingFlowSteps(tx *gorm.DB, useCaseID uuid.UUID) ([]missingFlowStepEntity, error)
 }
 
@@ -96,9 +97,17 @@ func (r flowStepRepository) getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID, f
 	return model.toEntity(), nil
 }
 
-func (r flowStepRepository) saveFlowStep(tx *gorm.DB, flowStep flowStepEntity) (flowStepEntity, error) {
+func (r flowStepRepository) saveFlowStep(tx *gorm.DB, flowStep flowStepEntity, operation mm_db.SaveOperation) (flowStepEntity, error) {
 	var model = flowStepModel(flowStep)
-	err := tx.Save(model).Error
+	var err error
+	switch operation {
+	case mm_db.Create:
+		err = tx.Create(model).Error
+	case mm_db.Update:
+		err = tx.Updates(model).Error
+	case mm_db.CreateIfNotExists:
+		err = tx.Save(model).Error
+	}
 	if err != nil {
 		return flowStepEntity{}, err
 	}

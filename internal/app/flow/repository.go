@@ -16,7 +16,7 @@ type flowRepositoryInterface interface {
 	listFlows(tx *gorm.DB, useCaseID uuid.UUID, limit int, offset int, orderBy flowOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]flowEntity, int64, error)
 	getFlowByID(tx *gorm.DB, flowID uuid.UUID, forUpdate bool) (flowEntity, error)
 	getFlowByCode(tx *gorm.DB, useCaseID uuid.UUID, flowCode string, forUpdate bool) (flowEntity, error)
-	saveFlow(tx *gorm.DB, flow flowEntity) (flowEntity, error)
+	saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error)
 	deleteFlow(tx *gorm.DB, flow flowEntity) (flowEntity, error)
 	makeFallbackConsistent(tx *gorm.DB, fallbackFlow flowEntity) error
 }
@@ -128,9 +128,17 @@ func (r flowRepository) getFlowByCode(tx *gorm.DB, useCaseID uuid.UUID, flowCode
 	return model.toEntity(), nil
 }
 
-func (r flowRepository) saveFlow(tx *gorm.DB, flow flowEntity) (flowEntity, error) {
+func (r flowRepository) saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error) {
 	var model = flowModel(flow)
-	err := tx.Save(model).Error
+	var err error
+	switch operation {
+	case mm_db.Create:
+		err = tx.Create(model).Error
+	case mm_db.Update:
+		err = tx.Updates(model).Error
+	case mm_db.CreateIfNotExists:
+		err = tx.Save(model).Error
+	}
 	if err != nil {
 		return flowEntity{}, err
 	}
