@@ -16,13 +16,10 @@ func Init(envs *mm_env.Envs, dbStorage *gorm.DB, pubSubAgent *mm_pubsub.PubSubAg
 	var repository useCaseRepositoryInterface
 	var service useCaseServiceInterface
 	var router useCaseRouterInterface
-	var consumer useCaseConsumerInterface
 
 	repository = newUseCaseRepository(envs.SearchRelevanceThreshold)
 	service = newUseCaseService(dbStorage, pubSubAgent, repository)
 	router = newUseCaseRouter(service)
-	consumer = newUseCaseConsumer(pubSubAgent, service)
-	consumer.subscribe()
 	router.register(routerGroup)
 	zap.L().Info("UseCase package initialized")
 }

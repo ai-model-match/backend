@@ -1,6 +1,7 @@
 package mm_pubsub
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,4 +37,15 @@ type FlowEventEntity struct {
 	Fallback    bool      `json:"fallback"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
+}
+
+type FlowStepEventEntity struct {
+	ID            uuid.UUID       `json:"id"`
+	FlowID        uuid.UUID       `json:"flowID"`
+	UseCaseID     uuid.UUID       `json:"useCaseId"`
+	UseCaseStepID uuid.UUID       `json:"useCaseStepId"`
+	Configuration json.RawMessage `json:"configuration"`
+	Placeholders  json.RawMessage `json:"placeholders"`
+	CreatedAt     time.Time       `json:"createdAt"`
+	UpdatedAt     time.Time       `json:"updatedAt"`
 }

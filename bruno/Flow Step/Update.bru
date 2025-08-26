@@ -1,0 +1,38 @@
+meta {
+  name: Update
+  type: http
+  seq: 4
+}
+
+put {
+  url: http://127.0.0.1:8001/api/v1/flow-steps/{{firstFlowStepId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "configuration": {
+      "modality": "chat",
+      "chat": {
+        "model": "gpt-5",
+        "messages": [{
+          "role": "system",
+          "content": "You are a <<ROLE>> and this is your history <<HISTORY>>"
+        },{
+          "role": "user",
+          "content": "Ciao <<USER_FIRSTNAME>>"
+        }
+        ]
+      }
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

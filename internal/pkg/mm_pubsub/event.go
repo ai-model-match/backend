@@ -27,6 +27,9 @@ const (
 	FlowCreatedEvent        PubSubEventType = "flow.created"
 	FlowUpdatedEvent        PubSubEventType = "flow.updated"
 	FlowDeletedEvent        PubSubEventType = "flow.deleted"
+	FlowStepCreatedEvent    PubSubEventType = "flow-step.created"
+	FlowStepUpdatedEvent    PubSubEventType = "flow-step.updated"
+	FlowStepDeletedEvent    PubSubEventType = "flow-step.deleted"
 )
 
 /*
