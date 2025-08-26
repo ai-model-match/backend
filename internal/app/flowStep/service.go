@@ -108,6 +108,8 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 					FlowID:        flowStep.FlowID,
 					UseCaseID:     flowStep.UseCaseID,
 					UseCaseStepID: flowStep.UseCaseStepID,
+					Configuration: flowStep.Configuration,
+					Placeholders:  flowStep.Placeholders,
 					CreatedAt:     flowStep.CreatedAt,
 					UpdatedAt:     flowStep.UpdatedAt,
 				},
