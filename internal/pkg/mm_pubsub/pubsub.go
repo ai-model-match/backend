@@ -22,7 +22,6 @@ type PubSubMessage struct {
 PubSubAgent is a pub-sub agent that orchestrates channels to forward messages from producers to consumers.
 */
 type PubSubAgent struct {
-	logger *zap.Logger
 	mu     sync.Mutex
 	subs   map[string][]chan PubSubMessage
 	quit   chan struct{}
