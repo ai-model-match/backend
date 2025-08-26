@@ -5,10 +5,6 @@ import (
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
 
-type createFlowStepInputDto struct {
-	UseCaseID string `json:"useCaseID"`
-}
-
 type ListFlowStepsInputDto struct {
 	FlowID   string `form:"flowID"`
 	Page     int    `form:"page"`
