@@ -51,12 +51,8 @@ func main() {
 	)
 	// PUB-SUB agent
 	pubSubAgent := mm_pubsub.NewPubSubAgent()
-	// Start CLI
-	app := cli.NewApp()
-	app.Name = "Backend"
-	app.Usage = "CLI"
 
-	//Init
+	// Init modules
 	r := gin.Default()
 	v1Api := r.Group("cli")
 	healthCheck.Init(envs, dbConnection, v1Api)
@@ -65,6 +61,11 @@ func main() {
 	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flow.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flowStep.Init(envs, dbConnection, pubSubAgent, v1Api)
+
+	// Create CLI app
+	app := cli.NewApp()
+	app.Name = "Backend"
+	app.Usage = "CLI"
 
 	// Define list of commands available in the CLI
 	app.Commands = []cli.Command{
@@ -77,18 +78,18 @@ func main() {
 			Flags: []cli.Flag{
 				&cli.StringFlag{
 					Name:     "start-from",
-					Required: false,
 					Usage:    "Optional ISO 8601 date to start replay from",
+					Required: false,
 				},
 				&cli.StringFlag{
 					Name:     "topic-name",
-					Required: false,
 					Usage:    "Optional topic name to filter events",
+					Required: false,
 				},
 			},
 		},
 	}
-
+	// Start the CLI
 	err := app.Run(os.Args)
 	if err != nil {
 		zap.L().Error("Something went wrong during execution", zap.String("service", "cli"), zap.Error(err))
