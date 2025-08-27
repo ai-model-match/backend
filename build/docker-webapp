@@ -16,7 +16,11 @@ COPY cmd/webapp/main.go ./
 RUN GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -o ./build/backend.app
 
 # Create the final image with the requested architecture (buildx)
-FROM --platform=$TARGETPLATFORM golang:1.25 AS production
+FROM --platform=$TARGETPLATFORM debian:stable-slim AS production
+# Upgrade libraries and install WGET for health-check
+RUN  apt-get update \
+  && apt-get install -y wget \
+  && rm -rf /var/lib/apt/lists/*
 WORKDIR /go/bin/backend
 COPY --from=builder /backend/.env ./.env
 COPY --from=builder /backend/build/backend.app ./backend.app

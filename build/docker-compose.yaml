@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aimodelmatch}
       POSTGRES_DB: ${POSTGRES_DB:-aimodelmatch}
     healthcheck:
-      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-backend}" ]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aimodelmatch}" ]
       interval: 5s
       timeout: 5s
       retries: 20
@@ -91,10 +91,10 @@ services:
     environment:
       DB_HOST: ${DB_HOST:-mm-database}
       DB_PORT: ${DB_PORT:-5432}
-      DB_USERNAME: ${DB_USERNAME:-backend}
-      DB_PASSWORD: ${DB_PASSWORD:-backend}
-      DB_USER: ${DB_USER:-backend}
-      DB_NAME: ${DB_NAME:-backend}
+      DB_USERNAME: ${DB_USERNAME:-aimodelmatch}
+      DB_PASSWORD: ${DB_PASSWORD:-aimodelmatch}
+      DB_USER: ${DB_USER:-aimodelmatch}
+      DB_NAME: ${DB_NAME:-aimodelmatch}
       DB_SSL_MODE: ${DB_SSL_MODE:-disable}
       DB_LOG_SLOW_QUERY_THRESHOLD: ${DB_LOG_SLOW_QUERY_THRESHOLD:-1}
       APP_PORT: ${APP_PORT:-8001}
