@@ -39,8 +39,6 @@ func containsAll(set []string, subset []string) bool {
 AuthMiddleware Middleware on APIs to check if the user is authenticated
 and verify the permissions the user has compared to the permissions required
 by the API. In case of failure, returns an error to the client.
-This guard verifies if the user can access the Company identified by its ID
-available in the API url.
 */
 func AuthMiddleware(permissionsToCheck []string) gin.HandlerFunc {
 	return func(ctx *gin.Context) {

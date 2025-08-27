@@ -45,7 +45,7 @@ func NewPubSubAgent() *PubSubAgent {
 Publish a message to a specific topic. The message will be sent to all the active channels.
 */
 func (b *PubSubAgent) Publish(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
-	if err := b.storeMessage(tx, pubsubTopic, msg); err != nil {
+	if err := b.persistMessageOnDB(tx, pubsubTopic, msg); err != nil {
 		return err
 	}
 	go b.publishMessageToTopic(pubsubTopic, msg)
@@ -53,9 +53,9 @@ func (b *PubSubAgent) Publish(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMe
 }
 
 /*
-Persist the new message on DB
+Persist the new message on DB for further replay
 */
-func (b *PubSubAgent) storeMessage(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
+func (b *PubSubAgent) persistMessageOnDB(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
 	rawMessage, err := json.Marshal(msg.Message)
 	if err != nil {
 		return err

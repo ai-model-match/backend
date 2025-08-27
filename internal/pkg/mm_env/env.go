@@ -95,7 +95,7 @@ func getMandatoryStringValue(field string) string {
 }
 
 /*
-Read a mandatory integer field, otherwise raise a panic error.
+Read a mandatory float field, otherwise raise a panic error.
 */
 func getMandatoryFloatValue(field string) float64 {
 	val := os.Getenv(field)
@@ -112,7 +112,7 @@ func getMandatoryFloatValue(field string) float64 {
 }
 
 /*
-Read a mandatory integer field, otherwise raise a panic error.
+Read a mandatory boolean field, otherwise raise a panic error.
 */
 func getMandatoryBooleanValue(field string) bool {
 	val := os.Getenv(field)
