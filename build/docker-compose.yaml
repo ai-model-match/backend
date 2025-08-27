@@ -24,6 +24,7 @@ services:
       dockerfile: ./build/docker-migrate
       target: production
     image: backend-migrate
+    restart: no
     depends_on:
       mm-database:
         condition: service_healthy
@@ -84,7 +85,7 @@ services:
       dockerfile: build/docker-cli
       target: production
     image: backend-cli
-    restart: unless-stopped
+    restart: no
     depends_on:
       mm-webapp:
         condition: service_healthy
