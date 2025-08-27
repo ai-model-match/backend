@@ -28,7 +28,7 @@ type SaveOperation string
 Declaration of all operations available while saving record on Database
 */
 const (
-	Create            SaveOperation = "create"
-	Update            SaveOperation = "update"
-	CreateIfNotExists SaveOperation = "create-if-not-exists"
+	Create SaveOperation = "create"
+	Update SaveOperation = "update"
+	Upsert SaveOperation = "upsert"
 )

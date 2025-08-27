@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -51,7 +52,7 @@ func (s authService) login(ctx *gin.Context, username string, password string) (
 			ExpiresAt:    token.RefreshTokenExpiresAt,
 			RefreshToken: token.RefreshToken,
 		}
-		if _, err := s.repository.saveAuthSessionEntity(tx, authEntity); err != nil {
+		if _, err := s.repository.saveAuthSessionEntity(tx, authEntity, mm_db.Create); err != nil {
 			return err
 		}
 		return nil
@@ -86,7 +87,7 @@ func (s authService) refreshToken(ctx *gin.Context, refreshToken string) (authTo
 		authEntity.CreatedAt = token.RefreshTokenCreatedAt
 		authEntity.ExpiresAt = token.RefreshTokenExpiresAt
 		authEntity.RefreshToken = token.RefreshToken
-		if _, err := s.repository.saveAuthSessionEntity(tx, authEntity); err != nil {
+		if _, err := s.repository.saveAuthSessionEntity(tx, authEntity, mm_db.Update); err != nil {
 			return err
 		}
 		return nil

@@ -108,7 +108,7 @@ func (r useCaseRepository) saveUseCase(tx *gorm.DB, useCase useCaseEntity, opera
 		err = tx.Create(model).Error
 	case mm_db.Update:
 		err = tx.Updates(model).Error
-	case mm_db.CreateIfNotExists:
+	case mm_db.Upsert:
 		err = tx.Save(model).Error
 	}
 	if err != nil {

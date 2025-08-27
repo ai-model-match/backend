@@ -13,6 +13,7 @@ import (
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_env"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
+	"github.com/ai-model-match/backend/internal/pkg/mm_scheduler"
 	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli"
 	"go.uber.org/zap"
@@ -52,11 +53,14 @@ func main() {
 	// PUB-SUB agent
 	pubSubAgent := mm_pubsub.NewPubSubAgent()
 
+	// Scheduler (only declaration, not start)
+	scheduler := mm_scheduler.NewScheduler()
+
 	// Init modules
 	r := gin.Default()
 	v1Api := r.Group("cli")
 	healthCheck.Init(envs, dbConnection, v1Api)
-	auth.Init(envs, dbConnection, v1Api)
+	auth.Init(envs, dbConnection, scheduler, v1Api)
 	useCase.Init(envs, dbConnection, pubSubAgent, v1Api)
 	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flow.Init(envs, dbConnection, pubSubAgent, v1Api)

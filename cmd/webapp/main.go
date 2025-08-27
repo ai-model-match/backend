@@ -22,6 +22,7 @@ import (
 	"github.com/ai-model-match/backend/internal/pkg/mm_env"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_router"
+	"github.com/ai-model-match/backend/internal/pkg/mm_scheduler"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
@@ -58,6 +59,9 @@ func main() {
 	// PUB-SUB agent
 	pubSubAgent := mm_pubsub.NewPubSubAgent()
 
+	// Scheduler
+	scheduler := mm_scheduler.NewScheduler()
+
 	// Start Server
 	zap.L().Info("Starting HTTP Server...", zap.String("service", "webapp"))
 	gin.SetMode(envs.AppMode)
@@ -80,11 +84,16 @@ func main() {
 	// Init moduels that will start exposing endpoints and consumers of internal events
 	v1Api := r.Group("api/v1")
 	healthCheck.Init(envs, dbConnection, v1Api)
-	auth.Init(envs, dbConnection, v1Api)
+	auth.Init(envs, dbConnection, scheduler, v1Api)
 	useCase.Init(envs, dbConnection, pubSubAgent, v1Api)
 	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flow.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flowStep.Init(envs, dbConnection, pubSubAgent, v1Api)
+
+	// Start the scheduler
+	if err := scheduler.Init(); err != nil {
+		panic(err)
+	}
 
 	// Start the application
 	srv := &http.Server{
@@ -115,6 +124,7 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	mm_db.CloseDatabaseConnection(dbConnection)
+	scheduler.Close()
 	pubSubAgent.Close()
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
