@@ -52,7 +52,7 @@ Once your migrations are defined, you can apply them locally with this command:
 ``` sh
 migrate -path "./scripts/migrations" -database "postgres://aimodelmatch:aimodelmatch@127.0.0.1:54322/aimodelmatch?sslmode=disable" up
 ```
-or simply running this file as a shortcut:
+or just update the DB credentials in the file and run it as a shortcut:
 ``` sh
 ./scripts/migrate-local.sh
 ```
