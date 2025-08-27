@@ -51,8 +51,8 @@ func (r flowStepConsumer) subscribe() {
 				if msg.Message.EventType != mm_pubsub.UseCaseStepCreatedEvent {
 					return
 				}
-
 				event := msg.Message.EventEntity.(*mm_pubsub.UseCaseStepEventEntity)
+				// Create any missing FLow step compared to Use Case steps
 				if err := r.service.createStepsForAllFlowsOfUseCase(event.UseCaseID); err != nil {
 					zap.L().Error("Impossible to create all flowSteps for the new Use Case Step", zap.String("service", "flow-step-consumer"))
 					return
@@ -91,6 +91,14 @@ func (r flowStepConsumer) subscribe() {
 				}
 
 				event := msg.Message.EventEntity.(*mm_pubsub.FlowEventEntity)
+				// If the created event is a cloned one, clone all its steps
+				if event.ClonedFromID != nil {
+					if err := r.service.cloneStepsFromFlow(event.ID, *event.ClonedFromID); err != nil {
+						zap.L().Error("Impossible to clone all flowSteps for the new cloned Flow", zap.String("service", "flow-step-consumer"))
+						return
+					}
+				}
+				// Create any missing FLow step compared to Use Case steps
 				if err := r.service.createStepsForAllFlowsOfUseCase(event.UseCaseID); err != nil {
 					zap.L().Error("Impossible to create all flowSteps for the new Flow", zap.String("service", "flow-step-consumer"))
 					return

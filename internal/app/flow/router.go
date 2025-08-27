@@ -177,4 +177,31 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 			}
 			mm_router.ReturnNoContent(ctx)
 		})
+
+	router.POST(
+		"/flows/:flowID/clone",
+		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		func(ctx *gin.Context) {
+			// Input validation
+			var request cloneFlowInputDto
+			mm_router.BindParameters(ctx, &request)
+			if err := request.validate(); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			// Business Logic
+			item, err := r.service.cloneFlow(ctx, request)
+			if err == errFlowNotFound {
+				mm_router.ReturnNotFoundError(ctx, err)
+				return
+			}
+			// Errors and output handler
+			if err != nil {
+				zap.L().Error("Something went wrong", zap.String("service", "flow-router"), zap.Error(err))
+				mm_router.ReturnGenericError(ctx)
+				return
+			}
+			mm_router.ReturnOk(ctx, &gin.H{"item": item})
+		})
 }

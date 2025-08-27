@@ -19,6 +19,7 @@ type flowStepServiceInterface interface {
 	getFlowStepByID(ctx *gin.Context, input getFlowStepInputDto) (flowStepEntity, error)
 	updateFlowStep(ctx *gin.Context, input updateFlowStepInputDto) (flowStepEntity, error)
 	createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error
+	cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uuid.UUID) error
 }
 
 type flowStepService struct {
@@ -67,7 +68,7 @@ func (s flowStepService) getFlowStepByID(ctx *gin.Context, input getFlowStepInpu
 func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepInputDto) (flowStepEntity, error) {
 	now := time.Now()
 	var flowStep flowStepEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		flowStepID := uuid.MustParse(input.ID)
 		if item, err := s.repository.getFlowStepByID(tx, flowStepID, true); err != nil {
@@ -119,8 +120,8 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return flowStepEntity{}, err_transaction
+	if errTransaction != nil {
+		return flowStepEntity{}, errTransaction
 	}
 
 	return flowStep, nil
@@ -129,7 +130,7 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error {
 	now := time.Now()
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		missingFlows, err := s.repository.getAllMissingFlowSteps(s.storage, useCaseID)
+		missingFlows, err := s.repository.getAllMissingFlowSteps(tx, useCaseID)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
@@ -164,6 +165,52 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 						Placeholders:  flowStep.Placeholders,
 						CreatedAt:     flowStep.CreatedAt,
 						UpdatedAt:     flowStep.UpdatedAt,
+					},
+				},
+			}); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return errTransaction
+	}
+	return nil
+}
+
+func (s flowStepService) cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uuid.UUID) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		if exists, err := s.repository.checkFlowExists(tx, clonedFlowID); err != nil {
+			return mm_err.ErrGeneric
+		} else if !exists {
+			return errFlowNotFound
+		}
+		if exists, err := s.repository.checkFlowExists(tx, newFlowId); err != nil {
+			return mm_err.ErrGeneric
+		} else if !exists {
+			return errFlowNotFound
+		}
+		clonedFlowSteps, err := s.repository.cloneFlowSteps(tx, clonedFlowID, newFlowId)
+		if err != nil {
+			return err
+		}
+		for _, clonedFlowStep := range clonedFlowSteps {
+			// Send an event of flowStep created
+			if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
+				Message: mm_pubsub.PubSubEvent{
+					EventID:   uuid.New(),
+					EventTime: time.Now(),
+					EventType: mm_pubsub.FlowStepCreatedEvent,
+					EventEntity: &mm_pubsub.FlowStepEventEntity{
+						ID:            clonedFlowStep.ID,
+						FlowID:        clonedFlowStep.FlowID,
+						UseCaseID:     clonedFlowStep.UseCaseID,
+						UseCaseStepID: clonedFlowStep.UseCaseStepID,
+						Configuration: clonedFlowStep.Configuration,
+						Placeholders:  clonedFlowStep.Placeholders,
+						CreatedAt:     clonedFlowStep.CreatedAt,
+						UpdatedAt:     clonedFlowStep.UpdatedAt,
 					},
 				},
 			}); err != nil {

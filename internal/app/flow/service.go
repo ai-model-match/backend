@@ -18,6 +18,7 @@ type flowServiceInterface interface {
 	createFlow(ctx *gin.Context, input createFlowInputDto) (flowEntity, error)
 	updateFlow(ctx *gin.Context, input updateFlowInputDto) (flowEntity, error)
 	deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flowEntity, error)
+	cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowEntity, error)
 }
 
 type flowService struct {
@@ -117,7 +118,7 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flowEntity, error) {
 	now := time.Now()
 	var flow flowEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the Flow exists
 		flowID := uuid.MustParse(input.ID)
 		item, err := s.repository.getFlowByID(tx, flowID, true)
@@ -179,8 +180,8 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return flowEntity{}, err_transaction
+	if errTransaction != nil {
+		return flowEntity{}, errTransaction
 	}
 
 	return flow, nil
@@ -188,7 +189,7 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 
 func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flowEntity, error) {
 	var flow flowEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		flowID := uuid.MustParse(input.ID)
 		item, err := s.repository.getFlowByID(tx, flowID, true)
 		if err != nil {
@@ -231,8 +232,66 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return flowEntity{}, err_transaction
+	if errTransaction != nil {
+		return flowEntity{}, errTransaction
 	}
+	return flow, nil
+}
+
+func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowEntity, error) {
+	now := time.Now()
+	var flow flowEntity
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		// Check if the flow to be cloned exists
+		flowID := uuid.MustParse(input.ID)
+		item, err := s.repository.getFlowByID(tx, flowID, true)
+		if err != nil {
+			return mm_err.ErrGeneric
+		}
+		if mm_utils.IsEmpty(item) {
+			return errFlowNotFound
+		}
+		// Create a new Flow entity starting from the cloned one
+		flow = flowEntity{
+			ID:           uuid.New(),
+			UseCaseID:    item.UseCaseID,
+			Active:       false,
+			Title:        input.NewTitle,
+			Description:  item.Description,
+			Fallback:     false,
+			CreatedAt:    now,
+			UpdatedAt:    now,
+			ClonedFromID: &item.ID,
+		}
+		if _, err = s.repository.saveFlow(tx, flow, mm_db.Create); err != nil {
+			return mm_err.ErrGeneric
+		}
+		// Send an event of flow created
+		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.FlowCreatedEvent,
+				EventEntity: &mm_pubsub.FlowEventEntity{
+					ID:           flow.ID,
+					UseCaseID:    flow.UseCaseID,
+					Active:       flow.Active,
+					Title:        flow.Title,
+					Description:  flow.Description,
+					Fallback:     flow.Fallback,
+					CreatedAt:    flow.CreatedAt,
+					UpdatedAt:    flow.UpdatedAt,
+					ClonedFromID: flow.ClonedFromID,
+				},
+			},
+		}); err != nil {
+			return err
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return flowEntity{}, errTransaction
+	}
+
 	return flow, nil
 }

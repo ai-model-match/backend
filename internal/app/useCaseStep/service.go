@@ -124,7 +124,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseCaseStepInputDto) (useCaseStepEntity, error) {
 	now := time.Now()
 	var useCaseStep useCaseStepEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		useCaseStepID := uuid.MustParse(input.ID)
 		item, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
@@ -195,8 +195,8 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return useCaseStepEntity{}, err_transaction
+	if errTransaction != nil {
+		return useCaseStepEntity{}, errTransaction
 	}
 
 	return useCaseStep, nil
@@ -204,7 +204,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 
 func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseCaseStepInputDto) (useCaseStepEntity, error) {
 	var useCaseStep useCaseStepEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseStepID := uuid.MustParse(input.ID)
 		item, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
@@ -244,8 +244,8 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return useCaseStepEntity{}, err_transaction
+	if errTransaction != nil {
+		return useCaseStepEntity{}, errTransaction
 	}
 	return useCaseStep, nil
 }

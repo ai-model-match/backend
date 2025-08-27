@@ -108,7 +108,7 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInputDto) (useCaseEntity, error) {
 	now := time.Now()
 	var useCase useCaseEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseId := uuid.MustParse(input.ID)
 		item, err := s.repository.getUseCaseByID(tx, useCaseId, true)
@@ -182,8 +182,8 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return useCaseEntity{}, err_transaction
+	if errTransaction != nil {
+		return useCaseEntity{}, errTransaction
 	}
 
 	return useCase, nil
@@ -191,7 +191,7 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 
 func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInputDto) (useCaseEntity, error) {
 	var useCase useCaseEntity
-	err_transaction := s.storage.Transaction(func(tx *gorm.DB) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseId := uuid.MustParse(input.ID)
 		item, err := s.repository.getUseCaseByID(tx, useCaseId, true)
@@ -228,8 +228,8 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 		}
 		return nil
 	})
-	if err_transaction != nil {
-		return useCaseEntity{}, err_transaction
+	if errTransaction != nil {
+		return useCaseEntity{}, errTransaction
 	}
 
 	return useCase, nil

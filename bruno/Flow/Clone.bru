@@ -1,0 +1,30 @@
+meta {
+  name: Clone
+  type: http
+  seq: 6
+}
+
+post {
+  url: http://127.0.0.1:8001/api/v1/flows/{{firstFlowId}}/clone
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "newTitle": "Flow B"
+  }
+}
+
+script:post-response {
+  bru.setVar("firstFlowId", res.body?.item?.id);
+  
+}
+
+settings {
+  encodeUrl: true
+}

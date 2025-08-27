@@ -1,6 +1,8 @@
 package flowStep
 
 import (
+	"time"
+
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	"github.com/google/uuid"
@@ -15,6 +17,7 @@ type flowStepRepositoryInterface interface {
 	getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID, forUpdate bool) (flowStepEntity, error)
 	saveFlowStep(tx *gorm.DB, flowStep flowStepEntity, operation mm_db.SaveOperation) (flowStepEntity, error)
 	getAllMissingFlowSteps(tx *gorm.DB, useCaseID uuid.UUID) ([]missingFlowStepEntity, error)
+	cloneFlowSteps(tx *gorm.DB, clonedFlowID uuid.UUID, newFlowID uuid.UUID) ([]flowStepEntity, error)
 }
 
 type flowStepRepository struct {
@@ -140,4 +143,34 @@ func (r flowStepRepository) getAllMissingFlowSteps(tx *gorm.DB, useCaseID uuid.U
 		entities = append(entities, entity)
 	}
 	return entities, nil
+}
+
+func (r flowStepRepository) cloneFlowSteps(tx *gorm.DB, clonedFlowID uuid.UUID, newFlowID uuid.UUID) ([]flowStepEntity, error) {
+	// Read all steps to be cloned
+	var oldSteps []flowStepModel
+	if err := tx.Where("flow_id = ?", clonedFlowID).Find(&oldSteps).Error; err != nil {
+		return []flowStepEntity{}, err
+	}
+	newSteps := make([]flowStepModel, len(oldSteps))
+	newStepEntities := make([]flowStepEntity, len(oldSteps))
+	now := time.Now()
+	// For each step, create a new cloned step
+	for i, s := range oldSteps {
+		newSteps[i] = flowStepModel{
+			ID:            uuid.New(),
+			FlowID:        newFlowID,
+			UseCaseID:     s.UseCaseID,
+			UseCaseStepID: s.UseCaseStepID,
+			Configuration: s.Configuration,
+			Placeholders:  s.Placeholders,
+			CreatedAt:     now,
+			UpdatedAt:     now,
+		}
+		newStepEntities[i] = newSteps[i].toEntity()
+	}
+	// Save all steps in one command
+	if err := tx.Create(&newSteps).Error; err != nil {
+		return []flowStepEntity{}, err
+	}
+	return newStepEntities, nil
 }

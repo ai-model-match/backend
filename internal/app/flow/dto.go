@@ -78,3 +78,15 @@ func (r deleteFlowInputDto) validate() error {
 		validation.Field(&r.ID, validation.Required, is.UUID),
 	)
 }
+
+type cloneFlowInputDto struct {
+	ID       string `uri:"flowID"`
+	NewTitle string `json:"newTitle"`
+}
+
+func (r cloneFlowInputDto) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.ID, validation.Required, is.UUID),
+		validation.Field(&r.NewTitle, validation.NilOrNotEmpty, validation.Length(1, 255)),
+	)
+}

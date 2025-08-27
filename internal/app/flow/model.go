@@ -17,14 +17,15 @@ func (m useCaseModel) TableName() string {
 }
 
 type flowModel struct {
-	ID          uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
-	UseCaseID   uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
-	Title       string    `gorm:"column:title;type:varchar(255)"`
-	Description string    `gorm:"column:description;type:text"`
-	Active      bool      `gorm:"column:active;type:boolean"`
-	Fallback    bool      `gorm:"column:fallback;type:boolean"`
-	CreatedAt   time.Time `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
-	UpdatedAt   time.Time `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
+	ID           uuid.UUID  `gorm:"primaryKey;column:id;type:varchar(36)"`
+	UseCaseID    uuid.UUID  `gorm:"column:use_case_id;type:varchar(36)"`
+	Title        string     `gorm:"column:title;type:varchar(255)"`
+	Description  string     `gorm:"column:description;type:text"`
+	Active       bool       `gorm:"column:active;type:boolean"`
+	Fallback     bool       `gorm:"column:fallback;type:boolean"`
+	CreatedAt    time.Time  `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
+	UpdatedAt    time.Time  `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
+	ClonedFromID *uuid.UUID `gorm:"-"`
 }
 
 func (m flowModel) TableName() string {
