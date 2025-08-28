@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"time"
 
 	"github.com/ai-model-match/backend/cmd/cli/commands"
 	"github.com/ai-model-match/backend/internal/app/auth"
@@ -98,4 +99,8 @@ func main() {
 	if err != nil {
 		zap.L().Error("Something went wrong during execution", zap.String("service", "cli"), zap.Error(err))
 	}
+	// Ensure there is enough time before shutting down the CLI
+	// to allow all goroutines to be executed
+	zap.L().Info("Shutdown CLI in 3 seconds...", zap.String("service", "webapp"))
+	time.Sleep(3 * time.Second)
 }

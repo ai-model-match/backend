@@ -15,6 +15,7 @@ type flowStepRepositoryInterface interface {
 	checkUseCaseStepExists(tx *gorm.DB, useCaseStepID uuid.UUID) (bool, error)
 	listFlowSteps(tx *gorm.DB, flowID uuid.UUID, limit int, offset int, forUpdate bool) ([]flowStepEntity, int64, error)
 	getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID, forUpdate bool) (flowStepEntity, error)
+	getFlowStepByFlowIDAndUseCaseStepID(tx *gorm.DB, flowID uuid.UUID, useCaseStepID uuid.UUID, forUpdate bool) (flowStepEntity, error)
 	saveFlowStep(tx *gorm.DB, flowStep flowStepEntity, operation mm_db.SaveOperation) (flowStepEntity, error)
 	getAllMissingFlowSteps(tx *gorm.DB, useCaseID uuid.UUID) ([]missingFlowStepEntity, error)
 	cloneFlowSteps(tx *gorm.DB, clonedFlowID uuid.UUID, newFlowID uuid.UUID) ([]flowStepEntity, error)
@@ -100,6 +101,22 @@ func (r flowStepRepository) getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID, f
 	return model.toEntity(), nil
 }
 
+func (r flowStepRepository) getFlowStepByFlowIDAndUseCaseStepID(tx *gorm.DB, flowID uuid.UUID, useCaseStepID uuid.UUID, forUpdate bool) (flowStepEntity, error) {
+	var model *flowStepModel
+	query := tx.Where("flow_id = ?", flowID).Where("use_case_step_id = ?", useCaseStepID)
+	if forUpdate {
+		query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	result := query.Limit(1).Find(&model)
+	if result.Error != nil {
+		return flowStepEntity{}, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return flowStepEntity{}, nil
+	}
+	return model.toEntity(), nil
+}
+
 func (r flowStepRepository) saveFlowStep(tx *gorm.DB, flowStep flowStepEntity, operation mm_db.SaveOperation) (flowStepEntity, error) {
 	var model = flowStepModel(flowStep)
 	var err error
@@ -148,15 +165,22 @@ func (r flowStepRepository) getAllMissingFlowSteps(tx *gorm.DB, useCaseID uuid.U
 func (r flowStepRepository) cloneFlowSteps(tx *gorm.DB, clonedFlowID uuid.UUID, newFlowID uuid.UUID) ([]flowStepEntity, error) {
 	// Read all steps to be cloned
 	var oldSteps []flowStepModel
+	newSteps := []flowStepModel{}
+	newStepEntities := []flowStepEntity{}
+
 	if err := tx.Where("flow_id = ?", clonedFlowID).Find(&oldSteps).Error; err != nil {
 		return []flowStepEntity{}, err
 	}
-	newSteps := make([]flowStepModel, len(oldSteps))
-	newStepEntities := make([]flowStepEntity, len(oldSteps))
 	now := time.Now()
-	// For each step, create a new cloned step
-	for i, s := range oldSteps {
-		newSteps[i] = flowStepModel{
+	// For each step to clone, check if already exists. If yes, skip to next, otherwise clone it
+	for _, s := range oldSteps {
+		if clonedStep, err := r.getFlowStepByFlowIDAndUseCaseStepID(tx, newFlowID, s.UseCaseStepID, false); err != nil {
+			return []flowStepEntity{}, err
+		} else if !mm_utils.IsEmpty(clonedStep) {
+			continue
+		}
+		// If the step does not exist, create a new one and put in the queue to be saved
+		newStep := flowStepModel{
 			ID:            uuid.New(),
 			FlowID:        newFlowID,
 			UseCaseID:     s.UseCaseID,
@@ -166,11 +190,14 @@ func (r flowStepRepository) cloneFlowSteps(tx *gorm.DB, clonedFlowID uuid.UUID, 
 			CreatedAt:     now,
 			UpdatedAt:     now,
 		}
-		newStepEntities[i] = newSteps[i].toEntity()
+		newSteps = append(newSteps, newStep)
+		newStepEntities = append(newStepEntities, newStep.toEntity())
 	}
-	// Save all steps in one command
-	if err := tx.Create(&newSteps).Error; err != nil {
-		return []flowStepEntity{}, err
+	// Save all the steps that needs to be stored
+	if len(newSteps) > 0 {
+		if err := tx.Create(&newSteps).Error; err != nil {
+			return []flowStepEntity{}, err
+		}
 	}
 	return newStepEntities, nil
 }

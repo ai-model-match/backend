@@ -37,7 +37,7 @@ type FlowEventEntity struct {
 	Fallback     bool       `json:"fallback"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
-	ClonedFromID *uuid.UUID `json:"-"`
+	ClonedFromID *uuid.UUID `json:"clonedFromID"`
 }
 
 type FlowStepEventEntity struct {
