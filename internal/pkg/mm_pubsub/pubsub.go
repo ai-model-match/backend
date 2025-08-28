@@ -22,20 +22,22 @@ type PubSubMessage struct {
 PubSubAgent is a pub-sub agent that orchestrates channels to forward messages from producers to consumers.
 */
 type PubSubAgent struct {
-	mu     sync.Mutex
-	subs   map[string][]chan PubSubMessage
-	quit   chan struct{}
-	closed bool
+	mu                sync.Mutex
+	subs              map[string][]chan PubSubMessage
+	quit              chan struct{}
+	closed            bool
+	persistEventsOnDb bool
 }
 
 /*
 NewPubSubAgent initialies a new pub-sub Agent.
 */
-func NewPubSubAgent() *PubSubAgent {
+func NewPubSubAgent(persistEventsOnDb bool) *PubSubAgent {
 	zap.L().Info("Start creatimg PubSub agent...", zap.String("service", "pub-sub"))
 	pubsub := &PubSubAgent{
-		subs: make(map[string][]chan PubSubMessage),
-		quit: make(chan struct{}),
+		subs:              make(map[string][]chan PubSubMessage),
+		quit:              make(chan struct{}),
+		persistEventsOnDb: persistEventsOnDb,
 	}
 	zap.L().Info("PubSub agent created!", zap.String("service", "pub-sub"))
 	return pubsub
@@ -56,6 +58,10 @@ func (b *PubSubAgent) Publish(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMe
 Persist the new message on DB for further replay
 */
 func (b *PubSubAgent) persistMessageOnDB(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
+	// Skip store events based on configuration
+	if !b.persistEventsOnDb {
+		return nil
+	}
 	rawMessage, err := json.Marshal(msg.Message)
 	if err != nil {
 		return err
