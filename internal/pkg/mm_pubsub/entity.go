@@ -12,7 +12,7 @@ type UseCaseEventEntity struct {
 	Title       string    `json:"title"`
 	Code        string    `json:"code"`
 	Description string    `json:"description"`
-	Active      bool      `json:"active"`
+	Active      *bool     `json:"active"`
 	CreatedAt   time.Time `json:"createdAt"`
 	UpdatedAt   time.Time `json:"updatedAt"`
 }
@@ -33,8 +33,8 @@ type FlowEventEntity struct {
 	UseCaseID    uuid.UUID  `json:"useCaseId"`
 	Title        string     `json:"title"`
 	Description  string     `json:"description"`
-	Active       bool       `json:"active"`
-	Fallback     bool       `json:"fallback"`
+	Active       *bool      `json:"active"`
+	Fallback     *bool      `json:"fallback"`
 	CreatedAt    time.Time  `json:"createdAt"`
 	UpdatedAt    time.Time  `json:"updatedAt"`
 	ClonedFromID *uuid.UUID `json:"clonedFromID"`

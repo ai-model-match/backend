@@ -68,10 +68,10 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 	flow := flowEntity{
 		ID:          uuid.New(),
 		UseCaseID:   useCaseID,
-		Active:      false,
+		Active:      mm_utils.BoolPtr(false),
 		Title:       input.Title,
 		Description: input.Description,
-		Fallback:    false,
+		Fallback:    mm_utils.BoolPtr(false),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -138,18 +138,18 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			flow.Description = *input.Description
 		}
 		if input.Active != nil {
-			flow.Active = *input.Active
+			flow.Active = input.Active
 		}
 		if input.Fallback != nil {
 			// If you are trying to remove the fallback, cannot be done if the use case is active
-			if flow.Fallback && !*input.Fallback {
+			if *flow.Fallback && !*input.Fallback {
 				if isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID); err != nil {
 					return err
 				} else if isActive {
 					return errFlowCannotRemoveFallbackWithActiveUseCase
 				}
 			}
-			flow.Fallback = *input.Fallback
+			flow.Fallback = input.Fallback
 		}
 		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
@@ -200,7 +200,7 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 		}
 		flow = item
 		// Avoid to delete a Flow if it is a fallback and the use case is active
-		if flow.Fallback {
+		if *flow.Fallback {
 			if isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID); err != nil {
 				return err
 			} else if isActive {
@@ -255,10 +255,10 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 		flow = flowEntity{
 			ID:           uuid.New(),
 			UseCaseID:    item.UseCaseID,
-			Active:       false,
+			Active:       mm_utils.BoolPtr(false),
 			Title:        input.NewTitle,
 			Description:  item.Description,
-			Fallback:     false,
+			Fallback:     mm_utils.BoolPtr(false),
 			CreatedAt:    now,
 			UpdatedAt:    now,
 			ClonedFromID: &item.ID,

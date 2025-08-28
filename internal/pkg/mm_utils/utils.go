@@ -125,3 +125,10 @@ func IsEmpty(data any) bool {
 	}
 	return true
 }
+
+/*
+Return a pointer to a boolean
+*/
+func BoolPtr(b bool) *bool {
+	return &b
+}

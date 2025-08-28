@@ -54,7 +54,7 @@ func (r flowRepository) checkUseCaseIsActive(tx *gorm.DB, useCaseID uuid.UUID) (
 	if result.RowsAffected == 0 || mm_utils.IsEmpty(model) {
 		return false, errUseCaseNotFound
 	}
-	return model.Active, nil
+	return *model.Active, nil
 }
 
 func (r flowRepository) listFlows(tx *gorm.DB, useCaseID uuid.UUID, limit int, offset int, orderBy flowOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]flowEntity, int64, error) {

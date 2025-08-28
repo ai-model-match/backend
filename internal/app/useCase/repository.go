@@ -136,5 +136,5 @@ func (r useCaseRepository) checkFallbackFlowExists(tx *gorm.DB, useCaseID uuid.U
 	if result.RowsAffected == 0 || mm_utils.IsEmpty(model) {
 		return false, nil
 	}
-	return model.Fallback, nil
+	return true, nil
 }

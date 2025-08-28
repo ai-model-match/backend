@@ -62,7 +62,7 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 		Title:       input.Title,
 		Code:        input.Code,
 		Description: input.Description,
-		Active:      false,
+		Active:      mm_utils.BoolPtr(false),
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -128,7 +128,7 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 				return errUseCaseSameCodeAlreadyExists
 			}
 			// Avoid changing code if the use case is active
-			if *input.Code != item.Code && item.Active {
+			if *input.Code != item.Code && *item.Active {
 				return errUseCaseCodeChangeNotAllowedWhileActive
 			}
 		}
@@ -146,7 +146,7 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 		}
 		if input.Active != nil {
 			// Avoid activating Use Case if there isn't any Fallback Flow
-			if !useCase.Active && *input.Active {
+			if !*useCase.Active && *input.Active {
 				fallbackExists, err := s.repository.checkFallbackFlowExists(tx, useCase.ID)
 				if err != nil {
 					return mm_err.ErrGeneric
@@ -155,7 +155,7 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 					return errUseCaseCannotBeActivatedWithoutFallbackFlow
 				}
 			}
-			useCase.Active = *input.Active
+			useCase.Active = input.Active
 		}
 		_, err = s.repository.saveUseCase(tx, useCase, mm_db.Update)
 		if err != nil {
@@ -202,7 +202,7 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 			return errUseCaseNotFound
 		}
 		// Prevent active use cases from being deleted
-		if item.Active {
+		if *item.Active {
 			return errUseCaseCannotBeDeletedWhileActive
 		}
 		useCase = item
