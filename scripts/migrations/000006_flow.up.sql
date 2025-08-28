@@ -5,6 +5,7 @@ CREATE TABLE "mm_flow" (
     "description" TEXT,
     "active" BOOLEAN NOT NULL DEFAULT false,
     "fallback" BOOLEAN NOT NULL DEFAULT false,
+    "initial_pct" DOUBLE PRECISION NOT NULL,
     "created_at" TIMESTAMP NOT NULL,
     "updated_at" TIMESTAMP NOT NULL
 );

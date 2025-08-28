@@ -15,7 +15,6 @@ import (
 type flowStatisticsServiceInterface interface {
 	getFlowStatisticsByID(ctx *gin.Context, input getFlowStatisticsInputDto) (flowStatisticsEntity, error)
 	createFlowStatistics(flowID uuid.UUID) (flowStatisticsEntity, error)
-	updateFlowStatistics(ctx *gin.Context, input updateFlowStatisticsInputDto) (flowStatisticsEntity, error)
 }
 
 type flowStatisticsService struct {
@@ -71,10 +70,9 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 			UseCaseID:          flow.UseCaseID,
 			TotRequests:        mm_utils.Int64Ptr(0),
 			TotSessionRequests: mm_utils.Int64Ptr(0),
-			InitialServePct:    mm_utils.Float64Ptr(0),
 			CurrentServePct:    mm_utils.Float64Ptr(0),
 			TotFeedback:        mm_utils.Int64Ptr(0),
-			AvgFeedbackScore:   mm_utils.Float64Ptr(0),
+			AvgScore:           mm_utils.Float64Ptr(0),
 			CreatedAt:          now,
 			UpdatedAt:          now,
 		}
@@ -87,35 +85,4 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 		return flowStatisticsEntity{}, errTransaction
 	}
 	return flowStatistics, nil
-}
-
-func (s flowStatisticsService) updateFlowStatistics(ctx *gin.Context, input updateFlowStatisticsInputDto) (flowStatisticsEntity, error) {
-	var flowStatistics flowStatisticsEntity
-	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		// Check if the Flow Statistics exists, otherwise return error
-		flowID := uuid.MustParse(input.FlowID)
-		item, err := s.repository.getFlowStatisticsByFlowID(s.storage, flowID, true)
-		if err != nil {
-			return mm_err.ErrGeneric
-		}
-		if mm_utils.IsEmpty(item) {
-			return errFlowStatisticsNotFound
-		}
-		// Update information including initial Serve Percentage
-		flowStatistics = item
-		flowStatistics.UpdatedAt = time.Now()
-		if input.InitialServePct != nil {
-			flowStatistics.InitialServePct = input.InitialServePct
-		}
-		if _, err := s.repository.saveFlowStatistics(tx, flowStatistics, mm_db.Update); err != nil {
-			return mm_err.ErrGeneric
-		}
-		return nil
-	})
-	if errTransaction != nil {
-		return flowStatisticsEntity{}, errTransaction
-	}
-
-	return flowStatistics, nil
-
 }

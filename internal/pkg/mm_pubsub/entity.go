@@ -29,15 +29,16 @@ type UseCaseStepEventEntity struct {
 }
 
 type FlowEventEntity struct {
-	ID           uuid.UUID  `json:"id"`
-	UseCaseID    uuid.UUID  `json:"useCaseId"`
-	Title        string     `json:"title"`
-	Description  string     `json:"description"`
-	Active       *bool      `json:"active"`
-	Fallback     *bool      `json:"fallback"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
-	ClonedFromID *uuid.UUID `json:"clonedFromId"`
+	ID              uuid.UUID  `json:"id"`
+	UseCaseID       uuid.UUID  `json:"useCaseId"`
+	Title           string     `json:"title"`
+	Description     string     `json:"description"`
+	Active          *bool      `json:"active"`
+	Fallback        *bool      `json:"fallback"`
+	InitialServePct *float64   `json:"initialServePct"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+	ClonedFromID    *uuid.UUID `json:"clonedFromId"`
 }
 
 type FlowStepEventEntity struct {
@@ -57,10 +58,9 @@ type FlowStatisticsEventEntity struct {
 	UseCaseID          uuid.UUID `json:"useCaseId"`
 	TotRequests        *int64    `json:"totRequests"`
 	TotSessionRequests *int64    `json:"totSessionRequests"`
-	InitialServePct    *float64  `json:"initialServePct"`
 	CurrentServePct    *float64  `json:"currentServePct"`
 	TotFeedback        *int64    `json:"totFeedback"`
-	AvgFeedbackScore   *float64  `json:"avgFeedbackScore"`
+	AvgScore           *float64  `json:"avgScore"`
 	CreatedAt          time.Time `json:"createdAt"`
 	UpdatedAt          time.Time `json:"updatedAt"`
 }

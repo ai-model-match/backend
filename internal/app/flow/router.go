@@ -120,12 +120,13 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 			// Input validation
 			var request updateFlowInputDto
 			mm_router.BindParameters(ctx, &request)
-			if err := request.validate(); err != nil {
+			parsedRequest, err := request.validate()
+			if err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
 			}
 			// Business Logic
-			item, err := r.service.updateFlow(ctx, request)
+			item, err := r.service.updateFlow(ctx, parsedRequest)
 			if err == errUseCaseNotFound {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return

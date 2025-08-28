@@ -66,14 +66,15 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 	now := time.Now()
 	useCaseID := uuid.MustParse(input.UseCaseID)
 	flow := flowEntity{
-		ID:          uuid.New(),
-		UseCaseID:   useCaseID,
-		Active:      mm_utils.BoolPtr(false),
-		Title:       input.Title,
-		Description: input.Description,
-		Fallback:    mm_utils.BoolPtr(false),
-		CreatedAt:   now,
-		UpdatedAt:   now,
+		ID:              uuid.New(),
+		UseCaseID:       useCaseID,
+		Active:          mm_utils.BoolPtr(false),
+		Title:           input.Title,
+		Description:     input.Description,
+		Fallback:        mm_utils.BoolPtr(false),
+		InitialServePct: mm_utils.Float64Ptr(0),
+		CreatedAt:       now,
+		UpdatedAt:       now,
 	}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
@@ -93,14 +94,15 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowCreatedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:          flow.ID,
-					UseCaseID:   flow.UseCaseID,
-					Active:      flow.Active,
-					Title:       flow.Title,
-					Description: flow.Description,
-					Fallback:    flow.Fallback,
-					CreatedAt:   flow.CreatedAt,
-					UpdatedAt:   flow.UpdatedAt,
+					ID:              flow.ID,
+					UseCaseID:       flow.UseCaseID,
+					Active:          flow.Active,
+					Title:           flow.Title,
+					Description:     flow.Description,
+					Fallback:        flow.Fallback,
+					InitialServePct: flow.InitialServePct,
+					CreatedAt:       flow.CreatedAt,
+					UpdatedAt:       flow.UpdatedAt,
 				},
 			},
 		}); err != nil {
@@ -151,6 +153,9 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			}
 			flow.Fallback = input.Fallback
 		}
+		if input.InitialServePct != nil {
+			flow.InitialServePct = input.InitialServePct
+		}
 		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
@@ -165,14 +170,15 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowUpdatedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:          flow.ID,
-					UseCaseID:   flow.UseCaseID,
-					Active:      flow.Active,
-					Title:       flow.Title,
-					Description: flow.Description,
-					Fallback:    flow.Fallback,
-					CreatedAt:   flow.CreatedAt,
-					UpdatedAt:   flow.UpdatedAt,
+					ID:              flow.ID,
+					UseCaseID:       flow.UseCaseID,
+					Active:          flow.Active,
+					Title:           flow.Title,
+					Description:     flow.Description,
+					Fallback:        flow.Fallback,
+					InitialServePct: flow.InitialServePct,
+					CreatedAt:       flow.CreatedAt,
+					UpdatedAt:       flow.UpdatedAt,
 				},
 			},
 		}); err != nil {
@@ -217,14 +223,15 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowDeletedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:          flow.ID,
-					UseCaseID:   flow.UseCaseID,
-					Active:      flow.Active,
-					Title:       flow.Title,
-					Description: flow.Description,
-					Fallback:    flow.Fallback,
-					CreatedAt:   flow.CreatedAt,
-					UpdatedAt:   flow.UpdatedAt,
+					ID:              flow.ID,
+					UseCaseID:       flow.UseCaseID,
+					Active:          flow.Active,
+					Title:           flow.Title,
+					Description:     flow.Description,
+					Fallback:        flow.Fallback,
+					InitialServePct: flow.InitialServePct,
+					CreatedAt:       flow.CreatedAt,
+					UpdatedAt:       flow.UpdatedAt,
 				},
 			},
 		}); err != nil {
@@ -253,15 +260,16 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 		}
 		// Create a new Flow entity starting from the cloned one
 		flow = flowEntity{
-			ID:           uuid.New(),
-			UseCaseID:    item.UseCaseID,
-			Active:       mm_utils.BoolPtr(false),
-			Title:        input.NewTitle,
-			Description:  item.Description,
-			Fallback:     mm_utils.BoolPtr(false),
-			CreatedAt:    now,
-			UpdatedAt:    now,
-			ClonedFromID: &item.ID,
+			ID:              uuid.New(),
+			UseCaseID:       item.UseCaseID,
+			Active:          mm_utils.BoolPtr(false),
+			Title:           input.NewTitle,
+			Description:     item.Description,
+			Fallback:        mm_utils.BoolPtr(false),
+			InitialServePct: item.InitialServePct,
+			CreatedAt:       now,
+			UpdatedAt:       now,
+			ClonedFromID:    &item.ID,
 		}
 		if _, err = s.repository.saveFlow(tx, flow, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
@@ -273,15 +281,16 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowCreatedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:           flow.ID,
-					UseCaseID:    flow.UseCaseID,
-					Active:       flow.Active,
-					Title:        flow.Title,
-					Description:  flow.Description,
-					Fallback:     flow.Fallback,
-					CreatedAt:    flow.CreatedAt,
-					UpdatedAt:    flow.UpdatedAt,
-					ClonedFromID: flow.ClonedFromID,
+					ID:              flow.ID,
+					UseCaseID:       flow.UseCaseID,
+					Active:          flow.Active,
+					Title:           flow.Title,
+					Description:     flow.Description,
+					Fallback:        flow.Fallback,
+					InitialServePct: flow.InitialServePct,
+					CreatedAt:       flow.CreatedAt,
+					UpdatedAt:       flow.UpdatedAt,
+					ClonedFromID:    flow.ClonedFromID,
 				},
 			},
 		}); err != nil {

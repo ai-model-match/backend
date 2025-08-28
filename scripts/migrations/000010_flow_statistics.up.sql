@@ -4,10 +4,9 @@ CREATE TABLE "mm_flow_statistics" (
     "use_case_id" VARCHAR(36) NOT NULL,
     "tot_req" BIGINT NOT NULL,
     "tot_sess_req" BIGINT NOT NULL,
-    "initial_pct" DOUBLE PRECISION NOT NULL,
     "current_pct" DOUBLE PRECISION NOT NULL,
     "tot_feedback" BIGINT NOT NULL,
-    "avg_feedback_score" DOUBLE PRECISION NOT NULL,
+    "avg_score" DOUBLE PRECISION NOT NULL,
     "created_at" TIMESTAMP NOT NULL,
     "updated_at" TIMESTAMP NOT NULL
 );
