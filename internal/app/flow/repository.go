@@ -155,12 +155,9 @@ func (r flowRepository) deleteFlow(tx *gorm.DB, flow flowEntity) (flowEntity, er
 }
 
 func (r flowRepository) makeFallbackConsistent(tx *gorm.DB, fallbackFlow flowEntity) error {
-	err := tx.Exec(`
-		UPDATE mm_flow f
-		SET fallback = FALSE
-		WHERE f.use_case_id = ?
-		AND f.id != ?
-	`, fallbackFlow.UseCaseID, fallbackFlow.ID).Error
+	err := tx.Model(&flowModel{}).
+		Where("use_case_id = ? AND id != ?", fallbackFlow.UseCaseID, fallbackFlow.ID).
+		Update("fallback", false).Error
 	if err != nil {
 		return err
 	}
