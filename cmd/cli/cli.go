@@ -7,6 +7,7 @@ import (
 	"github.com/ai-model-match/backend/cmd/cli/commands"
 	"github.com/ai-model-match/backend/internal/app/auth"
 	"github.com/ai-model-match/backend/internal/app/flow"
+	"github.com/ai-model-match/backend/internal/app/flowStatistics"
 	"github.com/ai-model-match/backend/internal/app/flowStep"
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
 	"github.com/ai-model-match/backend/internal/app/useCase"
@@ -66,6 +67,7 @@ func main() {
 	useCaseStep.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flow.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flowStep.Init(envs, dbConnection, pubSubAgent, v1Api)
+	flowStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Create CLI app
 	app := cli.NewApp()

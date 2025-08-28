@@ -51,6 +51,10 @@ type missingFlowStepModel struct {
 	UseCaseStepID uuid.UUID `gorm:"column:use_case_step_id;type:varchar(36)"`
 }
 
+func (m missingFlowStepModel) TableName() string {
+	return "mm_flow_step"
+}
+
 func (m missingFlowStepModel) toEntity() missingFlowStepEntity {
 	return missingFlowStepEntity(m)
 }

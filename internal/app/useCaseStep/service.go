@@ -67,13 +67,14 @@ func (s useCaseStepService) getUseCaseStepByID(ctx *gin.Context, input getUseCas
 func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseCaseStepInputDto) (useCaseStepEntity, error) {
 	now := time.Now()
 	useCaseID := uuid.MustParse(input.UseCaseID)
+	maxValue := int64(math.MaxInt64)
 	useCaseStep := useCaseStepEntity{
 		ID:          uuid.New(),
 		UseCaseID:   useCaseID,
 		Title:       input.Title,
 		Code:        input.Code,
 		Description: input.Description,
-		Position:    math.MaxInt64,
+		Position:    &maxValue,
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
@@ -159,10 +160,10 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		if input.Position != nil {
 			// If the step is moving in a lower position (e.g. from 10 to 3),
 			// we need to move it one step more, so that, the algorith to re-sort all steps correctly
-			if useCaseStep.Position > *input.Position {
+			if *useCaseStep.Position > *input.Position {
 				*input.Position = *input.Position - 1
 			}
-			useCaseStep.Position = *input.Position
+			useCaseStep.Position = input.Position
 		}
 		if _, err = s.repository.saveUseCaseStep(tx, useCaseStep, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric

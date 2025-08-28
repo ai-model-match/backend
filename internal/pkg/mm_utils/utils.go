@@ -132,3 +132,17 @@ Return a pointer to a boolean
 func BoolPtr(b bool) *bool {
 	return &b
 }
+
+/*
+Return a pointer to a float64
+*/
+func Float64Ptr(b float64) *float64 {
+	return &b
+}
+
+/*
+Return a pointer to a int64
+*/
+func Int64Ptr(b int64) *int64 {
+	return &b
+}

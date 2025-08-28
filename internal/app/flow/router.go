@@ -55,7 +55,7 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.GET(
-		"/flows/:flowID",
+		"/flows/:flowId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -113,7 +113,7 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.PUT(
-		"/flows/:flowID",
+		"/flows/:flowId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -148,7 +148,7 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.DELETE(
-		"/flows/:flowID",
+		"/flows/:flowId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -179,7 +179,7 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.POST(
-		"/flows/:flowID/clone",
+		"/flows/:flowId/clone",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {

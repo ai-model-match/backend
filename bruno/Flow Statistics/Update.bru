@@ -1,11 +1,11 @@
 meta {
   name: Update
   type: http
-  seq: 4
+  seq: 2
 }
 
 put {
-  url: http://127.0.0.1:8001/api/v1/use-case-steps/{{firstUseCaseStepId}}
+  url: http://127.0.0.1:8001/api/v1/flows/{{firstFlowId}}/flow-statistics/{{firstFlowStatisticsId}}
   body: json
   auth: bearer
 }
@@ -16,8 +16,7 @@ auth:bearer {
 
 body:json {
   {
-    "code": "new-code",
-    "position": 1
+    "initialServePct": "40.0"
   }
 }
 

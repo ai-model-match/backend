@@ -55,7 +55,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.GET(
-		"/use-case-steps/:useCaseStepID",
+		"/use-case-steps/:useCaseStepId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -117,7 +117,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.PUT(
-		"/use-case-steps/:useCaseStepID",
+		"/use-case-steps/:useCaseStepId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -152,7 +152,7 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.DELETE(
-		"/use-case-steps/:useCaseStepID",
+		"/use-case-steps/:useCaseStepId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {

@@ -5,13 +5,13 @@ meta {
 }
 
 get {
-  url: http://127.0.0.1:8001/api/v1/flow-steps?flowID={{firstFlowId}}&page=1&pageSize=10
+  url: http://127.0.0.1:8001/api/v1/flow-steps?flowId={{firstFlowId}}&page=1&pageSize=10
   body: none
   auth: bearer
 }
 
 params:query {
-  flowID: {{firstFlowId}}
+  flowId: {{firstFlowId}}
   page: 1
   pageSize: 10
 }

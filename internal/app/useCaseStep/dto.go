@@ -8,7 +8,7 @@ import (
 )
 
 type ListUseCaseStepsInputDto struct {
-	UseCaseID string  `form:"useCaseID"`
+	UseCaseID string  `form:"useCaseId"`
 	Page      int     `form:"page"`
 	PageSize  int     `form:"pageSize"`
 	OrderBy   string  `form:"orderBy"`
@@ -28,7 +28,7 @@ func (r ListUseCaseStepsInputDto) validate() error {
 }
 
 type getUseCaseStepInputDto struct {
-	ID string `uri:"useCaseStepID"`
+	ID string `uri:"useCaseStepId"`
 }
 
 func (r getUseCaseStepInputDto) validate() error {
@@ -38,7 +38,7 @@ func (r getUseCaseStepInputDto) validate() error {
 }
 
 type createUseCaseStepInputDto struct {
-	UseCaseID   string `json:"useCaseID"`
+	UseCaseID   string `json:"useCaseId"`
 	Title       string `json:"title"`
 	Code        string `json:"code"`
 	Description string `json:"description"`
@@ -54,7 +54,7 @@ func (r createUseCaseStepInputDto) validate() error {
 }
 
 type updateUseCaseStepInputDto struct {
-	ID          string  `uri:"useCaseStepID"`
+	ID          string  `uri:"useCaseStepId"`
 	Title       *string `json:"title"`
 	Code        *string `json:"code"`
 	Description *string `json:"description"`
@@ -72,7 +72,7 @@ func (r updateUseCaseStepInputDto) validate() error {
 }
 
 type deleteUseCaseStepInputDto struct {
-	ID string `uri:"useCaseStepID"`
+	ID string `uri:"useCaseStepId"`
 }
 
 func (r deleteUseCaseStepInputDto) validate() error {

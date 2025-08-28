@@ -55,7 +55,7 @@ func (r flowStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.GET(
-		"/flow-steps/:flowStepID",
+		"/flow-steps/:flowStepId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
@@ -82,7 +82,7 @@ func (r flowStepRouter) register(router *gin.RouterGroup) {
 		})
 
 	router.PUT(
-		"/flow-steps/:flowStepID",
+		"/flow-steps/:flowStepId",
 		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {

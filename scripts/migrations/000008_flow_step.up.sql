@@ -1,4 +1,4 @@
-CREATE TABLE mm_flow_step (
+CREATE TABLE "mm_flow_step" (
     "id" VARCHAR(36) PRIMARY KEY,
     "flow_id" VARCHAR(36) NOT NULL,
     "use_case_id" VARCHAR(36) NOT NULL,

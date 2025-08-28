@@ -6,7 +6,7 @@ import (
 )
 
 type ListFlowStepsInputDto struct {
-	FlowID   string `form:"flowID"`
+	FlowID   string `form:"flowId"`
 	Page     int    `form:"page"`
 	PageSize int    `form:"pageSize"`
 }
@@ -20,7 +20,7 @@ func (r ListFlowStepsInputDto) validate() error {
 }
 
 type getFlowStepInputDto struct {
-	ID string `uri:"flowStepID"`
+	ID string `uri:"flowStepId"`
 }
 
 func (r getFlowStepInputDto) validate() error {
@@ -30,7 +30,7 @@ func (r getFlowStepInputDto) validate() error {
 }
 
 type updateFlowStepInputDto struct {
-	ID            string           `uri:"flowStepID"`
+	ID            string           `uri:"flowStepId"`
 	Configuration openAIRequestDTO `json:"configuration"`
 }
 

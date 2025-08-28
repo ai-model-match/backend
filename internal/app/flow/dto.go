@@ -8,7 +8,7 @@ import (
 )
 
 type ListFlowsInputDto struct {
-	UseCaseID string  `form:"useCaseID"`
+	UseCaseID string  `form:"useCaseId"`
 	Page      int     `form:"page"`
 	PageSize  int     `form:"pageSize"`
 	OrderBy   string  `form:"orderBy"`
@@ -28,7 +28,7 @@ func (r ListFlowsInputDto) validate() error {
 }
 
 type getFlowInputDto struct {
-	ID string `uri:"flowID"`
+	ID string `uri:"flowId"`
 }
 
 func (r getFlowInputDto) validate() error {
@@ -38,7 +38,7 @@ func (r getFlowInputDto) validate() error {
 }
 
 type createFlowInputDto struct {
-	UseCaseID   string `json:"useCaseID"`
+	UseCaseID   string `json:"useCaseId"`
 	Title       string `json:"title"`
 	Description string `json:"description"`
 }
@@ -52,7 +52,7 @@ func (r createFlowInputDto) validate() error {
 }
 
 type updateFlowInputDto struct {
-	ID          string  `uri:"flowID"`
+	ID          string  `uri:"flowId"`
 	Title       *string `json:"title"`
 	Description *string `json:"description"`
 	Active      *bool   `json:"active"`
@@ -70,7 +70,7 @@ func (r updateFlowInputDto) validate() error {
 }
 
 type deleteFlowInputDto struct {
-	ID string `uri:"flowID"`
+	ID string `uri:"flowId"`
 }
 
 func (r deleteFlowInputDto) validate() error {
@@ -80,7 +80,7 @@ func (r deleteFlowInputDto) validate() error {
 }
 
 type cloneFlowInputDto struct {
-	ID       string `uri:"flowID"`
+	ID       string `uri:"flowId"`
 	NewTitle string `json:"newTitle"`
 }
 

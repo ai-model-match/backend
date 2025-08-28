@@ -78,23 +78,23 @@ func (s Scheduler) AcquireLock(tx *gorm.DB, jobID int64) bool {
 	// So, we can ignore it because the lock could not exist (first execution) or it is acquired by another DB session (generally another app instance)
 	var released bool
 	if r := tx.Raw("SELECT pg_advisory_unlock(?);", jobID).Scan(&released); r.Error != nil {
-		zap.L().Error("Lock release failed!", zap.Int64("jobId", jobID), zap.Error(r.Error), zap.String("service", "scheduler"))
+		zap.L().Error("Lock release failed!", zap.Int64("jobID", jobID), zap.Error(r.Error), zap.String("service", "scheduler"))
 	} else if !released {
-		zap.L().Info("Lock not released... ignore it!", zap.Int64("jobId", jobID), zap.String("service", "scheduler"))
+		zap.L().Info("Lock not released... ignore it!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 	} else {
-		zap.L().Info("Lock released!", zap.Int64("jobId", jobID), zap.String("service", "scheduler"))
+		zap.L().Info("Lock released!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 	}
 	// Now, try to acquire the lock with the same JobID. If fails, it means that someone else already taken the lock, so there is
 	// another app instance that will execute this specific job
 	var acquired bool
 	if r := tx.Raw("SELECT pg_try_advisory_lock(?);", jobID).Scan(&acquired); r.Error != nil {
-		zap.L().Error("Lock acquisition failed!", zap.Int64("jobId", jobID), zap.Error(r.Error), zap.String("service", "scheduler"))
+		zap.L().Error("Lock acquisition failed!", zap.Int64("jobID", jobID), zap.Error(r.Error), zap.String("service", "scheduler"))
 		return false
 	} else if !acquired {
-		zap.L().Info("Lock not acquired... another service is managing it!", zap.Int64("jobId", jobID), zap.String("service", "scheduler"))
+		zap.L().Info("Lock not acquired... another service is managing it!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 		return false
 	} else {
-		zap.L().Info("Lock acquired!", zap.Int64("jobId", jobID), zap.String("service", "scheduler"))
+		zap.L().Info("Lock acquired!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 		return true
 	}
 }

@@ -26,7 +26,7 @@ func (r ListUseCasesInputDto) validate() error {
 }
 
 type getUseCaseInputDto struct {
-	ID string `uri:"useCaseID"`
+	ID string `uri:"useCaseId"`
 }
 
 func (r getUseCaseInputDto) validate() error {
@@ -50,7 +50,7 @@ func (r createUseCaseInputDto) validate() error {
 }
 
 type updateUseCaseInputDto struct {
-	ID          string  `uri:"useCaseID"`
+	ID          string  `uri:"useCaseId"`
 	Title       *string `json:"title"`
 	Code        *string `json:"code"`
 	Description *string `json:"description"`
@@ -68,7 +68,7 @@ func (r updateUseCaseInputDto) validate() error {
 }
 
 type deleteUseCaseInputDto struct {
-	ID string `uri:"useCaseID"`
+	ID string `uri:"useCaseId"`
 }
 
 func (r deleteUseCaseInputDto) validate() error {
