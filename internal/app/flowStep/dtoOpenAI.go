@@ -36,9 +36,10 @@ type openAIRequestDTO struct {
 }
 
 // Validate validates the openAIRequestDTO based on modality
-func (r openAIRequestDTO) validate() error {
-	if err := validation.ValidateStruct(&r,
-		validation.Field(&r.Modality, validation.Required, validation.In(
+func (r openAIRequestDTO) validate(value interface{}) error {
+	v := value.(openAIRequestDTO)
+	if err := validation.ValidateStruct(&v,
+		validation.Field(&v.Modality, validation.Required, validation.In(
 			ModalityChat, ModalityImage, ModalityAudio, ModalityFile, ModalityFineTune,
 		)),
 	); err != nil {
@@ -46,34 +47,34 @@ func (r openAIRequestDTO) validate() error {
 	}
 
 	// Validate sub-struct based on modality
-	switch r.Modality {
+	switch v.Modality {
 	case ModalityChat:
-		if r.Chat == nil {
+		if v.Chat == nil {
 			return fmt.Errorf("chat data is required for modality 'chat'")
 		}
-		return r.Chat.validate()
+		return v.Chat.validate()
 	case ModalityImage:
-		if r.Image == nil {
+		if v.Image == nil {
 			return fmt.Errorf("image data is required for modality 'image'")
 		}
-		return r.Image.validate()
+		return v.Image.validate()
 	case ModalityAudio:
-		if r.Audio == nil {
+		if v.Audio == nil {
 			return fmt.Errorf("audio data is required for modality 'audio'")
 		}
-		return r.Audio.validate()
+		return v.Audio.validate()
 	case ModalityFile:
-		if r.File == nil {
+		if v.File == nil {
 			return fmt.Errorf("file data is required for modality 'file'")
 		}
-		return r.File.validate()
+		return v.File.validate()
 	case ModalityFineTune:
-		if r.FineTune == nil {
+		if v.FineTune == nil {
 			return fmt.Errorf("fine-tune data is required for modality 'fine-tune'")
 		}
-		return r.FineTune.validate()
+		return v.FineTune.validate()
 	default:
-		return fmt.Errorf("unsupported modality: %s", r.Modality)
+		return fmt.Errorf("unsupported modality: %s", v.Modality)
 	}
 }
 
