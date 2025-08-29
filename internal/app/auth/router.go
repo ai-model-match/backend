@@ -32,7 +32,10 @@ func (r authRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input
 			var request loginUserInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -57,7 +60,10 @@ func (r authRouter) register(router *gin.RouterGroup) {
 		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
 		func(ctx *gin.Context) {
 			var request refreshTokenInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -83,7 +89,10 @@ func (r authRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input
 			var request refreshTokenInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return

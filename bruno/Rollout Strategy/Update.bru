@@ -1,0 +1,62 @@
+meta {
+  name: Update
+  type: http
+  seq: 1
+}
+
+put {
+  url: http://127.0.0.1:8001/api/v1/use-cases/{{firstUseCaseId}}/rollout-strategy
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "configuration": {
+      "warmup": {
+        "interval_mins": 11,
+        "goals": [
+          {
+            "flow_id": "04f71099-e8a5-4d48-a290-b994c4d91104",
+            "final_serve_pct": 40
+          },
+          {
+            "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
+            "final_serve_pct": 30
+          },
+          {
+            "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
+            "final_serve_pct": 30
+          }
+        ]
+      },
+      "escape": {
+        "rules": [
+          {
+            "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
+            "min_feedback": 10,
+            "lower_score": 2.5
+          },
+          {
+            "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
+            "min_feedback": 10,
+            "lower_score": 2.5
+          }
+        ]
+      },
+      "adapt": {
+        "interval_mins": 10,
+        "max_step_pct": 20,
+        "min_feedback": 50
+      }
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+}

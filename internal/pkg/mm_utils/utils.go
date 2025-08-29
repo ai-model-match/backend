@@ -146,3 +146,11 @@ Return a pointer to a int64
 func Int64Ptr(b int64) *int64 {
 	return &b
 }
+
+/*
+Round a Float value to max 2 decimals
+*/
+func RoundTo2Decimals(val *float64) *float64 {
+	v := math.Round(*val*100) / 100
+	return &v
+}

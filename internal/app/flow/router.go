@@ -34,7 +34,10 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request ListFlowsInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -61,7 +64,10 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request getFlowInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -92,7 +98,10 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request createFlowInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -119,14 +128,16 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request updateFlowInputDto
-			mm_router.BindParameters(ctx, &request)
-			parsedRequest, err := request.validate()
-			if err != nil {
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
 			}
 			// Business Logic
-			item, err := r.service.updateFlow(ctx, parsedRequest)
+			item, err := r.service.updateFlow(ctx, request)
 			if err == errUseCaseNotFound {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return
@@ -155,7 +166,10 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request deleteFlowInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -186,7 +200,10 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request cloneFlowInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return

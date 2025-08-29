@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/ai-model-match/backend/internal/pkg/mm_err"
 	"github.com/gin-gonic/gin"
 )
 
@@ -105,8 +106,17 @@ func ReturnGenericError(ctx *gin.Context) {
 BindParameters accept an object as DTO and tries to populate it with all the
 parameters found in the URI, Query params and JSON payload..
 */
-func BindParameters(ctx *gin.Context, obj any) {
-	ctx.ShouldBindUri(obj)
-	ctx.ShouldBindQuery(obj)
-	ctx.ShouldBindJSON(obj)
+func BindParameters(ctx *gin.Context, obj any) error {
+	if err := ctx.ShouldBindUri(obj); err != nil {
+		return mm_err.ErrGenericInput
+	}
+	if err := ctx.ShouldBindQuery(obj); err != nil {
+		return mm_err.ErrGenericInput
+	}
+	if ctx.Request.Method == http.MethodPost || ctx.Request.Method == http.MethodPut || ctx.Request.Method == http.MethodPatch {
+		if err := ctx.ShouldBindJSON(obj); err != nil {
+			return mm_err.ErrGenericInput
+		}
+	}
+	return nil
 }

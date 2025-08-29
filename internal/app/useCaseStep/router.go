@@ -34,7 +34,10 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request ListUseCaseStepsInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -61,7 +64,10 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request getUseCaseStepInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -92,7 +98,10 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request createUseCaseStepInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -123,7 +132,10 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request updateUseCaseStepInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -158,7 +170,10 @@ func (r useCaseStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request deleteUseCaseStepInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return

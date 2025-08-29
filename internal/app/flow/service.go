@@ -154,7 +154,7 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			flow.Fallback = input.Fallback
 		}
 		if input.InitialServePct != nil {
-			flow.InitialServePct = input.InitialServePct
+			flow.InitialServePct = mm_utils.RoundTo2Decimals(input.InitialServePct)
 		}
 		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric

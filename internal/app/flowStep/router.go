@@ -34,7 +34,10 @@ func (r flowStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request ListFlowStepsInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -61,7 +64,10 @@ func (r flowStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request getFlowStepInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return
@@ -88,7 +94,10 @@ func (r flowStepRouter) register(router *gin.RouterGroup) {
 		func(ctx *gin.Context) {
 			// Input validation
 			var request updateFlowStepInputDto
-			mm_router.BindParameters(ctx, &request)
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
 			if err := request.validate(); err != nil {
 				mm_router.ReturnValidationError(ctx, err)
 				return

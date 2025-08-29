@@ -35,11 +35,10 @@ type updateFlowStepInputDto struct {
 }
 
 func (r updateFlowStepInputDto) validate() error {
-	if err := validation.ValidateStruct(&r,
+	return validation.ValidateStruct(&r,
 		validation.Field(&r.ID, validation.Required, is.UUID),
-		validation.Field(&r.Configuration, validation.Required, validation.By(r.Configuration.validate)),
-	); err != nil {
-		return err
-	}
-	return nil
+		validation.Field(&r.Configuration, validation.Required, validation.By(func(v interface{}) error {
+			return v.(openAIRequestDTO).validate()
+		})),
+	)
 }

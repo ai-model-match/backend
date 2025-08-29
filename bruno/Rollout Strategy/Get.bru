@@ -1,0 +1,19 @@
+meta {
+  name: Get
+  type: http
+  seq: 2
+}
+
+get {
+  url: http://127.0.0.1:8001/api/v1/use-cases/{{firstUseCaseId}}/rollout-strategy
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+settings {
+  encodeUrl: true
+}

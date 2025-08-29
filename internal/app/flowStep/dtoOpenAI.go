@@ -36,10 +36,9 @@ type openAIRequestDTO struct {
 }
 
 // Validate validates the openAIRequestDTO based on modality
-func (r openAIRequestDTO) validate(value interface{}) error {
-	v := value.(openAIRequestDTO)
-	if err := validation.ValidateStruct(&v,
-		validation.Field(&v.Modality, validation.Required, validation.In(
+func (r openAIRequestDTO) validate() error {
+	if err := validation.ValidateStruct(&r,
+		validation.Field(&r.Modality, validation.Required, validation.In(
 			ModalityChat, ModalityImage, ModalityAudio, ModalityFile, ModalityFineTune,
 		)),
 	); err != nil {
@@ -47,34 +46,34 @@ func (r openAIRequestDTO) validate(value interface{}) error {
 	}
 
 	// Validate sub-struct based on modality
-	switch v.Modality {
+	switch r.Modality {
 	case ModalityChat:
-		if v.Chat == nil {
+		if r.Chat == nil {
 			return fmt.Errorf("chat data is required for modality 'chat'")
 		}
-		return v.Chat.validate()
+		return r.Chat.validate()
 	case ModalityImage:
-		if v.Image == nil {
+		if r.Image == nil {
 			return fmt.Errorf("image data is required for modality 'image'")
 		}
-		return v.Image.validate()
+		return r.Image.validate()
 	case ModalityAudio:
-		if v.Audio == nil {
+		if r.Audio == nil {
 			return fmt.Errorf("audio data is required for modality 'audio'")
 		}
-		return v.Audio.validate()
+		return r.Audio.validate()
 	case ModalityFile:
-		if v.File == nil {
+		if r.File == nil {
 			return fmt.Errorf("file data is required for modality 'file'")
 		}
-		return v.File.validate()
+		return r.File.validate()
 	case ModalityFineTune:
-		if v.FineTune == nil {
+		if r.FineTune == nil {
 			return fmt.Errorf("fine-tune data is required for modality 'fine-tune'")
 		}
-		return v.FineTune.validate()
+		return r.FineTune.validate()
 	default:
-		return fmt.Errorf("unsupported modality: %s", v.Modality)
+		return fmt.Errorf("unsupported modality: %s", r.Modality)
 	}
 }
 
@@ -85,14 +84,14 @@ func (r openAIRequestDTO) validate(value interface{}) error {
 type chatCompletionRequestDTO struct {
 	Model            string       `json:"model"`
 	Messages         []messageDTO `json:"messages"`
-	Temperature      *float32     `json:"temperature,omitempty"`
-	TopP             *float32     `json:"top_p,omitempty"`
+	Temperature      *float64     `json:"temperature,omitempty"`
+	TopP             *float64     `json:"top_p,omitempty"`
 	N                *int         `json:"n,omitempty"`
 	Stream           *bool        `json:"stream,omitempty"`
 	Stop             []string     `json:"stop,omitempty"`
 	MaxTokens        *int         `json:"max_tokens,omitempty"`
-	PresencePenalty  *float32     `json:"presence_penalty,omitempty"`
-	FrequencyPenalty *float32     `json:"frequency_penalty,omitempty"`
+	PresencePenalty  *float64     `json:"presence_penalty,omitempty"`
+	FrequencyPenalty *float64     `json:"frequency_penalty,omitempty"`
 	User             *string      `json:"user,omitempty"`
 }
 
@@ -139,7 +138,7 @@ type audioTranscriptionRequestDTO struct {
 	FilePath    string   `json:"file_path"`
 	Prompt      *string  `json:"prompt,omitempty"`
 	ResponseFmt *string  `json:"response_format,omitempty"`
-	Temperature *float32 `json:"temperature,omitempty"`
+	Temperature *float64 `json:"temperature,omitempty"`
 	Language    *string  `json:"language,omitempty"`
 }
 
