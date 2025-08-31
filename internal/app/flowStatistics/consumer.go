@@ -54,8 +54,10 @@ func (r flowStatisticsConsumer) subscribe() {
 				event := msg.Message.EventEntity.(*mm_pubsub.FlowEventEntity)
 				// Create the Flow Statistics
 				if _, err := r.service.createFlowStatistics(event.ID); err != nil {
-					zap.L().Error("Impossible to create the flowStatisticss for the new Flow", zap.String("service", "flow-statistics-consumer"))
-					return
+					if err != errFlowStatisticsAlreadyExists {
+						zap.L().Error("Impossible to create the flowStatisticss for the new Flow", zap.String("service", "flow-statistics-consumer"), zap.Error(err))
+						return
+					}
 				}
 			}()
 		}
