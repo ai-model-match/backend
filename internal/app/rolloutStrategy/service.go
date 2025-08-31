@@ -110,18 +110,23 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			}
 		}
 		// Check request to change Rollout configuration
-
 		if input.Configuration != nil {
 			// not allowed if the state is not INIT
 			if rolloutStrategy.RolloutState != RolloutStateInit {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
+			// Round decimals on percentages
+			for i := range input.Configuration.Warmup.Goals {
+				input.Configuration.Warmup.Goals[i].FinalServePct = *(mm_utils.RoundTo2Decimals(&input.Configuration.Warmup.Goals[i].FinalServePct))
+			}
+			// Finally, convert in JSON
 			if configuration, err := json.Marshal(input.Configuration); err != nil {
 				return errRolloutStrategyWrongConfigFormat
 			} else {
 				rolloutStrategy.Configuration = configuration
 			}
 		}
+		// Save Rollout Strategy
 		rolloutStrategy.UpdatedAt = now
 		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric

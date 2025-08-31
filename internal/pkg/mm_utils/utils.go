@@ -110,13 +110,6 @@ func TransformToInterfaces(input []string) []interface{} {
 }
 
 /*
-SetFloatPrecision rounds a Float64 to a specific precision.
-*/
-func SetFloatPrecision(input float64, precision int) float64 {
-	return math.Round(input*(math.Pow10(precision))) / math.Pow10(precision)
-}
-
-/*
 IsEmpty checks if a value is empty. Are considered empty values: new empty struct, nil, 0, false, "".
 */
 func IsEmpty(data any) bool {

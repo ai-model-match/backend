@@ -1,6 +1,8 @@
 package rolloutStrategy
 
 import (
+	"errors"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
@@ -10,12 +12,23 @@ type rsEscapePhaseDto struct {
 }
 
 func (r rsEscapePhaseDto) validate() error {
-	return validation.ValidateStruct(&r,
+	if err := validation.ValidateStruct(&r,
 		validation.Field(&r.Rules, validation.Required, validation.Length(1, 0), validation.Each(validation.By(func(value interface{}) error {
 			v := value.(rsEscapeRulesDto)
 			return v.validate()
 		}))),
-	)
+	); err != nil {
+		return err
+	}
+	// Check there is only one rule per Flow
+	seen := make(map[string]bool)
+	for _, rule := range r.Rules {
+		if _, exists := seen[rule.FlowID]; exists {
+			return errors.New("flow can have only one rule associated")
+		}
+		seen[rule.FlowID] = true
+	}
+	return nil
 }
 
 type rsEscapeRulesDto struct {
