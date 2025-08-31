@@ -14,15 +14,11 @@ type useCaseModel struct {
 func (m useCaseModel) TableName() string {
 	return "mm_use_case"
 }
-func (m useCaseModel) toEntity() useCaseEntity {
-	return useCaseEntity(m)
-}
 
 type RolloutState string
 
 const (
 	RolloutStateInit            RolloutState = "INIT"
-	RolloutStateReview          RolloutState = "REVIEW"
 	RolloutStateWarmup          RolloutState = "WARMUP"
 	RolloutStateEscaped         RolloutState = "ESCAPED"
 	RolloutStateMonitor         RolloutState = "MONITOR"
@@ -47,4 +43,25 @@ func (m rolloutStrategyModel) TableName() string {
 
 func (m rolloutStrategyModel) toEntity() rolloutStrategyEntity {
 	return rolloutStrategyEntity(m)
+}
+
+var AvailableRolloutState = []interface{}{
+	RolloutStateInit,
+	RolloutStateWarmup,
+	RolloutStateEscaped,
+	RolloutStateMonitor,
+	RolloutStateAdaptive,
+	RolloutStateCompleted,
+	RolloutStateForcedEscaped,
+	RolloutStateForcedCompleted,
+}
+
+var allowedTransitions = map[RolloutState][]RolloutState{
+	RolloutStateInit:            {RolloutStateWarmup},
+	RolloutStateWarmup:          {RolloutStateForcedEscaped, RolloutStateForcedCompleted},
+	RolloutStateMonitor:         {RolloutStateForcedEscaped, RolloutStateForcedCompleted},
+	RolloutStateAdaptive:        {RolloutStateForcedEscaped, RolloutStateForcedCompleted},
+	RolloutStateCompleted:       {RolloutStateInit},
+	RolloutStateForcedEscaped:   {RolloutStateInit},
+	RolloutStateForcedCompleted: {RolloutStateInit},
 }

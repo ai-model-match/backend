@@ -66,6 +66,7 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		item, err := s.repository.getUseCaseByCode(tx, input.Code, false)
 		if err != nil {
@@ -78,7 +79,7 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -95,19 +96,23 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return useCase, nil
 }
 
 func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInputDto) (useCaseEntity, error) {
 	now := time.Now()
 	var useCase useCaseEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseId := uuid.MustParse(input.ID)
@@ -162,7 +167,7 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 			return mm_err.ErrGeneric
 		}
 		// Send an event of useCase updated
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -179,18 +184,22 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return useCase, nil
 }
 
 func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInputDto) (useCaseEntity, error) {
 	var useCase useCaseEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseId := uuid.MustParse(input.ID)
@@ -208,7 +217,7 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 		useCase = item
 		s.repository.deleteUseCase(tx, useCase)
 		// Send an event of useCase deleted
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -225,12 +234,15 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return useCase, nil
 }

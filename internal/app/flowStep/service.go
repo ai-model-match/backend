@@ -68,6 +68,7 @@ func (s flowStepService) getFlowStepByID(ctx *gin.Context, input getFlowStepInpu
 func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepInputDto) (flowStepEntity, error) {
 	now := time.Now()
 	var flowStep flowStepEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		flowStepID := uuid.MustParse(input.ID)
@@ -99,7 +100,7 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 			return mm_err.ErrGeneric
 		} else if flowStep, err = s.repository.getFlowStepByID(tx, flowStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
-		} else if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
+		} else if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -117,18 +118,22 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return flowStepEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return flowStep, nil
 }
 
 func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error {
 	now := time.Now()
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		missingFlows, err := s.repository.getAllMissingFlowSteps(tx, useCaseID)
 		if err != nil {
@@ -151,7 +156,7 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 				return mm_err.ErrGeneric
 			}
 			// Send an event of flowStep created
-			if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
 				Message: mm_pubsub.PubSubEvent{
 					EventID:   uuid.New(),
 					EventTime: time.Now(),
@@ -169,17 +174,22 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 				},
 			}); err != nil {
 				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return nil
 }
 
 func (s flowStepService) cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uuid.UUID) error {
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		if exists, err := s.repository.checkFlowExists(tx, clonedFlowID); err != nil {
 			return mm_err.ErrGeneric
@@ -197,7 +207,7 @@ func (s flowStepService) cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uu
 		}
 		for _, clonedFlowStep := range clonedFlowSteps {
 			// Send an event of flowStep created
-			if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
 				Message: mm_pubsub.PubSubEvent{
 					EventID:   uuid.New(),
 					EventTime: time.Now(),
@@ -215,12 +225,16 @@ func (s flowStepService) cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uu
 				},
 			}); err != nil {
 				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return nil
 }

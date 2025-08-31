@@ -9,7 +9,7 @@ import (
 )
 
 type rolloutStrategyRepositoryInterface interface {
-	getUseCaseByID(tx *gorm.DB, useCaseID uuid.UUID) (useCaseEntity, error)
+	checkUseCaseExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
 	getRolloutStrategyByUseCaseID(tx *gorm.DB, flowIDuseCaseID uuid.UUID, forUpdate bool) (rolloutStrategyEntity, error)
 	saveRolloutStrategy(tx *gorm.DB, rolloutStrategy rolloutStrategyEntity, operation mm_db.SaveOperation) (rolloutStrategyEntity, error)
 }
@@ -21,19 +21,18 @@ func newRolloutStrategyRepository() rolloutStrategyRepository {
 	return rolloutStrategyRepository{}
 }
 
-func (r rolloutStrategyRepository) getUseCaseByID(tx *gorm.DB, flowID uuid.UUID) (useCaseEntity, error) {
+func (r rolloutStrategyRepository) checkUseCaseExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error) {
 	var model *useCaseModel
-	query := tx.Where("id = ?", flowID)
+	query := tx.Where("id = ?", useCaseID)
 	result := query.Limit(1).Find(&model)
 	if result.Error != nil {
-		return useCaseEntity{}, result.Error
+		return false, result.Error
 	}
 	if result.RowsAffected == 0 || mm_utils.IsEmpty(model) {
-		return useCaseEntity{}, nil
+		return false, nil
 	}
-	return model.toEntity(), nil
+	return true, nil
 }
-
 func (r rolloutStrategyRepository) getRolloutStrategyByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) (rolloutStrategyEntity, error) {
 	var model *rolloutStrategyModel
 	query := tx.Where("use_case_id = ?", useCaseID)

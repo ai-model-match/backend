@@ -2,6 +2,7 @@ package rolloutStrategy
 
 import (
 	"encoding/json"
+	"slices"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -14,7 +15,7 @@ import (
 )
 
 type rolloutStrategyServiceInterface interface {
-	getRolloutStrategyByID(ctx *gin.Context, input getRolloutStrategyInputDto) (rolloutStrategyEntity, error)
+	getRolloutStrategyByUseCaseID(ctx *gin.Context, input getRolloutStrategyInputDto) (rolloutStrategyEntity, error)
 	createRolloutStrategy(useCaseID uuid.UUID) (rolloutStrategyEntity, error)
 	updateRolloutStrategy(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error)
 }
@@ -33,7 +34,7 @@ func newRolloutStrategyService(storage *gorm.DB, pubSubAgent *mm_pubsub.PubSubAg
 	}
 }
 
-func (s rolloutStrategyService) getRolloutStrategyByID(ctx *gin.Context, input getRolloutStrategyInputDto) (rolloutStrategyEntity, error) {
+func (s rolloutStrategyService) getRolloutStrategyByUseCaseID(ctx *gin.Context, input getRolloutStrategyInputDto) (rolloutStrategyEntity, error) {
 	useCaseID := uuid.MustParse(input.UseCaseID)
 	item, err := s.repository.getRolloutStrategyByUseCaseID(s.storage, useCaseID, false)
 	if err != nil {
@@ -49,15 +50,15 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 	now := time.Now()
 	var rolloutStrategy rolloutStrategyEntity
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		// Retrieve the Flow Step and check if exists
-		useCase, err := s.repository.getUseCaseByID(tx, useCaseID)
+		// Retrieve and check if the related Use Case exists
+		exists, err := s.repository.checkUseCaseExists(tx, useCaseID)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(useCase) {
+		if !exists {
 			return errUseCaseNotFound
 		}
-		// Check if the Rollout Strategy already exists, if yes, return an error
+		// Check if the Rollout Strategy already exists
 		item, err := s.repository.getRolloutStrategyByUseCaseID(tx, useCaseID, false)
 		if err != nil {
 			return mm_err.ErrGeneric
@@ -69,7 +70,7 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 		config, _ := json.Marshal(map[string]interface{}{})
 		rolloutStrategy = rolloutStrategyEntity{
 			ID:            uuid.New(),
-			UseCaseID:     useCase.ID,
+			UseCaseID:     useCaseID,
 			RolloutState:  RolloutStateInit,
 			Configuration: json.RawMessage(config),
 			CreatedAt:     now,
@@ -99,10 +100,27 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		} else {
 			rolloutStrategy = item
 		}
-		if configuration, err := json.Marshal(input.Configuration); err != nil {
-			return errRolloutStrategyWrongConfigFormat
-		} else {
-			rolloutStrategy.Configuration = configuration
+		// Check request to change Rollout state
+		if input.RolloutState != nil && RolloutState(*input.RolloutState) != rolloutStrategy.RolloutState {
+			// Check the flow, if cna be move to next state
+			if ok := s.checkStateFlow(rolloutStrategy.RolloutState, RolloutState(*input.RolloutState)); ok {
+				rolloutStrategy.RolloutState = RolloutState(*input.RolloutState)
+			} else {
+				return errRolloutStrategyTransitionStateNotAllowed
+			}
+		}
+		// Check request to change Rollout configuration
+
+		if input.Configuration != nil {
+			// not allowed if the state is not INIT
+			if rolloutStrategy.RolloutState != RolloutStateInit {
+				return errRolloutStrategyTransitionStateNotAllowed
+			}
+			if configuration, err := json.Marshal(input.Configuration); err != nil {
+				return errRolloutStrategyWrongConfigFormat
+			} else {
+				rolloutStrategy.Configuration = configuration
+			}
 		}
 		rolloutStrategy.UpdatedAt = now
 		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Update); err != nil {
@@ -114,4 +132,13 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		return rolloutStrategyEntity{}, errTransaction
 	}
 	return rolloutStrategy, nil
+}
+
+func (s rolloutStrategyService) checkStateFlow(currentState RolloutState, nextState RolloutState) bool {
+	if nextStates, ok := allowedTransitions[currentState]; ok {
+		if slices.Contains(nextStates, nextState) {
+			return true
+		}
+	}
+	return false
 }

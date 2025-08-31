@@ -15,7 +15,3 @@ type rolloutStrategyEntity struct {
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 }
-
-type useCaseEntity struct {
-	ID uuid.UUID `json:"useCaseId"`
-}

@@ -43,7 +43,7 @@ func (r rolloutStrategyRouter) register(router *gin.RouterGroup) {
 				return
 			}
 			// Business Logic
-			item, err := r.service.getRolloutStrategyByID(ctx, request)
+			item, err := r.service.getRolloutStrategyByUseCaseID(ctx, request)
 			if err == errRolloutStrategyNotFound {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return
@@ -79,6 +79,10 @@ func (r rolloutStrategyRouter) register(router *gin.RouterGroup) {
 				return
 			}
 			if err == errRolloutStrategyWrongConfigFormat {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
+			if err == errRolloutStrategyTransitionStateNotAllowed {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}

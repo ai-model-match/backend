@@ -52,10 +52,15 @@ func (r rolloutStrategyConsumer) subscribe() {
 					return
 				}
 				event := msg.Message.EventEntity.(*mm_pubsub.UseCaseEventEntity)
-				// Create the Flow Statistics
+				// Create the Rollout Strategy
 				if _, err := r.service.createRolloutStrategy(event.ID); err != nil {
-					zap.L().Error("Impossible to create the rolloutStrategy for the new Use Case", zap.String("service", "rollout-strategy-consumer"))
-					return
+					if err == errRolloutStrategyAlreadyExists {
+						zap.L().Info("rolloutStrategy already exists. Skip event", zap.String("service", "rollout-strategy-consumer"))
+						return
+					} else {
+						zap.L().Error("Impossible to create the rolloutStrategy for the new Use Case", zap.String("service", "rollout-strategy-consumer"))
+						return
+					}
 				}
 			}()
 		}

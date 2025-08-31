@@ -29,6 +29,11 @@ type PubSubAgent struct {
 	persistEventsOnDb bool
 }
 
+type EventToPublish struct {
+	pubsubTopic PubSubTopic
+	msg         PubSubMessage
+}
+
 /*
 NewPubSubAgent initialies a new pub-sub Agent.
 */
@@ -44,27 +49,16 @@ func NewPubSubAgent(persistEventsOnDb bool) *PubSubAgent {
 }
 
 /*
-Publish a message to a specific topic. The message will be sent to all the active channels.
+Persist a message and its topic on DB
 */
-func (b *PubSubAgent) Publish(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
-	if err := b.persistMessageOnDB(tx, pubsubTopic, msg); err != nil {
-		return err
-	}
-	go b.publishMessageToTopic(pubsubTopic, msg)
-	return nil
-}
-
-/*
-Persist the new message on DB for further replay
-*/
-func (b *PubSubAgent) persistMessageOnDB(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) error {
+func (b *PubSubAgent) Persist(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) (EventToPublish, error) {
 	// Skip store events based on configuration
 	if !b.persistEventsOnDb {
-		return nil
+		return EventToPublish{}, nil
 	}
 	rawMessage, err := json.Marshal(msg.Message)
 	if err != nil {
-		return err
+		return EventToPublish{}, err
 	}
 	model := eventModel{
 		ID:        msg.Message.EventID,
@@ -73,7 +67,31 @@ func (b *PubSubAgent) persistMessageOnDB(tx *gorm.DB, pubsubTopic PubSubTopic, m
 		EventDate: msg.Message.EventTime,
 		EventBody: rawMessage,
 	}
-	return tx.Create(model).Error
+	if err := tx.Create(model).Error; err != nil {
+		return EventToPublish{}, err
+	}
+	return EventToPublish{
+		pubsubTopic: pubsubTopic,
+		msg:         msg,
+	}, nil
+}
+
+/*
+Publish a message to a specific topic. The message will be deliver to all the active channels.
+*/
+func (b *PubSubAgent) Publish(event EventToPublish) error {
+	go b.publishMessageToTopic(event.pubsubTopic, event.msg)
+	return nil
+}
+
+/*
+Publish a message to a specific topic. The message will be deliver to all the active channels.
+*/
+func (b *PubSubAgent) PublishBulk(events []EventToPublish) error {
+	for _, event := range events {
+		go b.publishMessageToTopic(event.pubsubTopic, event.msg)
+	}
+	return nil
 }
 
 /*

@@ -52,10 +52,15 @@ func (r flowStepStatisticsConsumer) subscribe() {
 					return
 				}
 				event := msg.Message.EventEntity.(*mm_pubsub.FlowStepEventEntity)
-				// Create the Flow Statistics
+				// Create the Flow Step Statistics
 				if _, err := r.service.createFlowStepStatistics(event.ID); err != nil {
-					zap.L().Error("Impossible to create the flowStepStatistics for the new Flow Step", zap.String("service", "flow-step-statistics-consumer"))
-					return
+					if err == errFlowStepStatisticsAlreadyExists {
+						zap.L().Info("flowStepStatistics already exists. Skip event", zap.String("service", "flow-step-statistics-consumer"))
+						return
+					} else {
+						zap.L().Error("Impossible to create the flowStepStatistics for the new Flow Step", zap.String("service", "flow-step-statistics-consumer"))
+						return
+					}
 				}
 			}()
 		}

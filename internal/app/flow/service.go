@@ -76,6 +76,7 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID)
 		if err != nil {
@@ -88,7 +89,7 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow created
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -107,19 +108,23 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return flowEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return flow, nil
 }
 
 func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flowEntity, error) {
 	now := time.Now()
 	var flow flowEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the Flow exists
 		flowID := uuid.MustParse(input.ID)
@@ -164,7 +169,7 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow updated
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -183,18 +188,22 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return flowEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return flow, nil
 }
 
 func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flowEntity, error) {
 	var flow flowEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		flowID := uuid.MustParse(input.ID)
 		item, err := s.repository.getFlowByID(tx, flowID, true)
@@ -217,7 +226,7 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow deleted
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -236,11 +245,15 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return flowEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return flow, nil
 }
@@ -248,6 +261,7 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowEntity, error) {
 	now := time.Now()
 	var flow flowEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the flow to be cloned exists
 		flowID := uuid.MustParse(input.ID)
@@ -275,7 +289,7 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow created
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -295,12 +309,15 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return flowEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return flow, nil
 }

@@ -1,6 +1,5 @@
 CREATE TYPE "mm_rollout_state" AS ENUM (
   'INIT',
-  'REVIEW',
   'WARMUP',
   'ESCAPED',
   'MONITOR',

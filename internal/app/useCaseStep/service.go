@@ -78,6 +78,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 		CreatedAt:   now,
 		UpdatedAt:   now,
 	}
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		if exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID); err != nil {
 			return mm_err.ErrGeneric
@@ -95,7 +96,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 		} else if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -113,11 +114,15 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseStepEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return useCaseStep, nil
 }
@@ -125,6 +130,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseCaseStepInputDto) (useCaseStepEntity, error) {
 	now := time.Now()
 	var useCaseStep useCaseStepEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		useCaseStepID := uuid.MustParse(input.ID)
@@ -175,7 +181,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 			return mm_err.ErrGeneric
 		}
 		// Send an event of useCaseStep updated
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -193,18 +199,22 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseStepEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-
 	return useCaseStep, nil
 }
 
 func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseCaseStepInputDto) (useCaseStepEntity, error) {
 	var useCaseStep useCaseStepEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseStepID := uuid.MustParse(input.ID)
@@ -224,7 +234,7 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		}
 
 		// Send an event of useCaseStep deleted
-		if err = s.pubSubAgent.Publish(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
 				EventID:   uuid.New(),
 				EventTime: time.Now(),
@@ -242,11 +252,15 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 			},
 		}); err != nil {
 			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
 		}
 		return nil
 	})
 	if errTransaction != nil {
 		return useCaseStepEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return useCaseStep, nil
 }
