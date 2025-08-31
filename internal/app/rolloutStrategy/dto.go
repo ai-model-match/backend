@@ -1,6 +1,7 @@
 package rolloutStrategy
 
 import (
+	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
@@ -25,7 +26,7 @@ type updateRolloutStrategyInputDto struct {
 func (r updateRolloutStrategyInputDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
-		validation.Field(&r.RolloutState, validation.In(mm_utils.TransformToStrings(AvailableRolloutState)...)),
+		validation.Field(&r.RolloutState, validation.In(mm_utils.TransformToStrings(mm_pubsub.AvailableRolloutState)...)),
 		validation.Field(&r.Configuration, validation.When(r.RolloutState != nil, validation.Nil.Error("not allowed during State update")), validation.By(func(v interface{}) error {
 			if mm_utils.IsEmpty(v) {
 				return nil

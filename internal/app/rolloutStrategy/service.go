@@ -49,6 +49,7 @@ func (s rolloutStrategyService) getRolloutStrategyByUseCaseID(ctx *gin.Context, 
 func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (rolloutStrategyEntity, error) {
 	now := time.Now()
 	var rolloutStrategy rolloutStrategyEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Retrieve and check if the related Use Case exists
 		exists, err := s.repository.checkUseCaseExists(tx, useCaseID)
@@ -71,7 +72,7 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 		rolloutStrategy = rolloutStrategyEntity{
 			ID:            uuid.New(),
 			UseCaseID:     useCaseID,
-			RolloutState:  RolloutStateInit,
+			RolloutState:  mm_pubsub.RolloutStateInit,
 			Configuration: json.RawMessage(config),
 			CreatedAt:     now,
 			UpdatedAt:     now,
@@ -79,10 +80,32 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
 		}
+		// Send an event of Rollout Straregy created
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRolloutStrategyV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.RolloutStrategyCreatedEvent,
+				EventEntity: &mm_pubsub.RolloutStrategyEventEntity{
+					ID:            rolloutStrategy.ID,
+					UseCaseID:     rolloutStrategy.UseCaseID,
+					RolloutState:  rolloutStrategy.RolloutState,
+					Configuration: rolloutStrategy.Configuration,
+					CreatedAt:     rolloutStrategy.CreatedAt,
+					UpdatedAt:     rolloutStrategy.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
+		}
 		return nil
 	})
 	if errTransaction != nil {
 		return rolloutStrategyEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return rolloutStrategy, nil
 }
@@ -90,6 +113,7 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error) {
 	now := time.Now()
 	var rolloutStrategy rolloutStrategyEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseID := uuid.MustParse(input.UseCaseID)
@@ -101,10 +125,10 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			rolloutStrategy = item
 		}
 		// Check request to change Rollout state
-		if input.RolloutState != nil && RolloutState(*input.RolloutState) != rolloutStrategy.RolloutState {
+		if input.RolloutState != nil && mm_pubsub.RolloutState(*input.RolloutState) != rolloutStrategy.RolloutState {
 			// Check the flow, if cna be move to next state
-			if ok := s.checkStateFlow(rolloutStrategy.RolloutState, RolloutState(*input.RolloutState)); ok {
-				rolloutStrategy.RolloutState = RolloutState(*input.RolloutState)
+			if ok := s.checkStateFlow(rolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
+				rolloutStrategy.RolloutState = mm_pubsub.RolloutState(*input.RolloutState)
 			} else {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
@@ -112,7 +136,7 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		// Check request to change Rollout configuration
 		if input.Configuration != nil {
 			// not allowed if the state is not INIT
-			if rolloutStrategy.RolloutState != RolloutStateInit {
+			if rolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
 			// Round decimals on percentages
@@ -131,15 +155,37 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
+		// Send an event of Rollout Straregy updated
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRolloutStrategyV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.RolloutStrategyUpdatedEvent,
+				EventEntity: &mm_pubsub.RolloutStrategyEventEntity{
+					ID:            rolloutStrategy.ID,
+					UseCaseID:     rolloutStrategy.UseCaseID,
+					RolloutState:  rolloutStrategy.RolloutState,
+					Configuration: rolloutStrategy.Configuration,
+					CreatedAt:     rolloutStrategy.CreatedAt,
+					UpdatedAt:     rolloutStrategy.UpdatedAt,
+				},
+			},
+		}); err != nil {
+			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
+		}
 		return nil
 	})
 	if errTransaction != nil {
 		return rolloutStrategyEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return rolloutStrategy, nil
 }
 
-func (s rolloutStrategyService) checkStateFlow(currentState RolloutState, nextState RolloutState) bool {
+func (s rolloutStrategyService) checkStateFlow(currentState mm_pubsub.RolloutState, nextState mm_pubsub.RolloutState) bool {
 	if nextStates, ok := allowedTransitions[currentState]; ok {
 		if slices.Contains(nextStates, nextState) {
 			return true
