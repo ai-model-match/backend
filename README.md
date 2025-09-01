@@ -28,6 +28,7 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - You can send a Correlation ID to ensure the same Flow will serve correlated requests.
 - Correlated requests will count once for statistics on Flows and Rollout Strategy.
 - CorrelationID has 24h validity, after that time, new request with same CorrelationID will be considered as new.
+- Feedback can be sent based on the CorrelationID, so ensure they are sent within 24h
 
 
 ```mermaid

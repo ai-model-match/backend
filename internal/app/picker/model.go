@@ -82,3 +82,22 @@ func (m pickerCorrelationModel) TableName() string {
 func (m pickerCorrelationModel) toEntity() pickerCorrelationEntity {
 	return pickerCorrelationEntity(m)
 }
+
+type pickerRequestModel struct {
+	ID                 uuid.UUID       `gorm:"primaryKey;column:id;type:varchar(36)"`
+	UseCaseID          uuid.UUID       `gorm:"column:use_case_id;type:varchar(36)"`
+	UseCaseStepID      uuid.UUID       `gorm:"column:use_case_step_id;type:varchar(36)"`
+	FlowID             uuid.UUID       `gorm:"column:flow_id;type:varchar(36)"`
+	FlowStepID         uuid.UUID       `gorm:"column:flow_step_id;type:varchar(36)"`
+	CorrelationID      uuid.UUID       `gorm:"column:correlation_id;type:varchar(36)"`
+	IsFirstCorrelation *bool           `gorm:"column:is_first_correlation;type:bool"`
+	IsFallback         *bool           `gorm:"column:is_fallback;type:bool"`
+	InputMessage       json.RawMessage `gorm:"column:input_message;type:json"`
+	OutputMessage      json.RawMessage `gorm:"column:output_message;type:json"`
+	Placeholders       json.RawMessage `gorm:"column:placeholders;type:json"`
+	CreatedAt          time.Time       `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
+}
+
+func (m pickerRequestModel) TableName() string {
+	return "mm_picker_request"
+}

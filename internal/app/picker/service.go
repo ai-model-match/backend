@@ -45,6 +45,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	var isFallback bool = false
 	var isFirstCorrelation bool = false
 	eventsToPublish := []mm_pubsub.EventToPublish{}
+	// Check Use Case exists by its code
 	if item, err := s.repository.getUseCaseByCode(s.storage, input.UseCaseCode); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
 	} else if mm_utils.IsEmpty(item) {
@@ -54,6 +55,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	} else {
 		useCase = item
 	}
+	// Check Use Case Step exists by its code and associated to the Use Case before
 	if item, err := s.repository.getUseCaseStepByCode(s.storage, useCase.ID, input.UseCaseStepCode); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
 	} else if mm_utils.IsEmpty(item) {
@@ -61,6 +63,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	} else {
 		useCaseStep = item
 	}
+	// Search a recent correlation by ID (in the last 24 hours)
 	if item, err := s.repository.getRecentCorrelationByID(s.storage, mm_utils.GetUUIDFromString(input.CorrelationId)); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
 	} else if !mm_utils.IsEmpty(item) {
@@ -71,7 +74,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		isFallback = correlation.Fallback
 	}
 	if !mm_utils.IsEmpty(correlation) {
-		// If correlation found, find immediately the Flow
+		// If correlation found, we have immediately the Flow
 		if item, err := s.repository.getFlowByID(s.storage, correlation.FlowID); err != nil {
 			return pickerEntity{}, mm_err.ErrGeneric
 		} else if mm_utils.IsEmpty(item) {
@@ -94,14 +97,14 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			} else {
 				fallbackFlow = items[index]
 			}
-			// Now filter only for active Flows
+			// Prepare list of active Flows to consider
 			for _, item := range items {
 				if item.Active {
 					availableFlows = append(availableFlows, item)
 				}
 			}
 		}
-		// Now we have all available Flows and the fallback one, given a random number,
+		// We have all available Flows and the fallback one, given a random number,
 		// take the Flow to consider
 		r := rand.Float64() * 100
 		var cumulative float64
@@ -112,7 +115,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 				break
 			}
 		}
-		// If no flow has been randomly selected, use the fallback one
+		// If no flow has been weight randomly selected, use the fallback one
 		if mm_utils.IsEmpty(selectedFlow) {
 			selectedFlow = fallbackFlow
 			isFallback = true
@@ -163,6 +166,10 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			Placeholders:       selectedFlowStep.Placeholders,
 			CreatedAt:          time.Now(),
 		}
+		// Save request and relative response on DB for further analysis
+		if _, err := s.repository.savePickerEntity(tx, pickedEntity, mm_db.Create); err != nil {
+			return err
+		}
 		// Persist an event to Picker topic
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicPickerV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
@@ -194,6 +201,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	if errTransaction != nil {
 		return pickerEntity{}, errTransaction
 	} else {
+		// Send event on PubSub
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return pickedEntity, nil
