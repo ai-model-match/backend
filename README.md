@@ -20,13 +20,14 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 ```mermaid
 flowchart LR
     A[Incoming Request] --> B{Is Use Case ACTIVE?}
-    B -- No --> C[Return 400 Bad Request]
-    B -- Yes --> D[Calculate which active Flows will serve the incoming request]
+    B -- No --> C[Return 404]
+    B -- Yes --> D[Calculate which ACTIVE Flow will serve the incoming request]
     D --> E{Did any Flow match?}
-    E -- Yes --> F[Use the selected Flow]
-    E -- No --> G[Use Fallback as selected Flow]
-    F --> G[Generate Output using selected Flow]
-    G --> H[Return Response]
+    E -- No --> F[Use Fallback as selected Flow]
+    E -- Yes --> G[Use the selected Flow]
+    F --> H[Generate Output using selected Flow]
+    G --> H[Generate Output using selected Flow]
+    H --> I[Return Response]
 ```
 ## Developer Experience
 Below you can find instructions on how to start developing natively your project based on the Backend, leveraging a dockerized external Database.
