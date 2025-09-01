@@ -60,6 +60,10 @@ func (r pickerRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}
+			if err == errCorrelationConflict {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
 			if err == errFlowsNotAvailable {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return

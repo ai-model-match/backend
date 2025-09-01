@@ -16,6 +16,8 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - A Use Case marked as ACTIVE indicates that can accept incoming requests (there is at least the Fallback Flow)
 - A Flow marked as ACTIVE indicates that can be considered as one of the available flows to handle the incoming request
 - The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the incoming request.
+- Thanks to the CorrelationID passed in the request, the system will use the same Flow on different steps to ensure consistency
+- Asking multiple times the same Step and Use Case on same Correlation ID is not going to impact statistics and Rollout strategy 
 
 ```mermaid
 flowchart LR

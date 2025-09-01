@@ -62,6 +62,9 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	if item, err := s.repository.getRecentCorrelationByID(s.storage, mm_utils.GetUUIDFromString(input.CorrelationId)); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
 	} else if !mm_utils.IsEmpty(item) {
+		if item.UseCaseID != useCase.ID {
+			return pickerEntity{}, errCorrelationConflict
+		}
 		correlation = item
 	}
 	if !mm_utils.IsEmpty(correlation) {

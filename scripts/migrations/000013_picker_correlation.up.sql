@@ -18,7 +18,4 @@ ALTER TABLE "mm_picker_correlation"
     ON UPDATE CASCADE
     ON DELETE CASCADE;
 
-
-ALTER TABLE "mm_picker_correlation" ADD CONSTRAINT "idx_mm_picker_correlation_use_case" UNIQUE ("use_case_id");
-
 CREATE INDEX "idx_mm_picker_correlation_use_case_id_created_at" ON "mm_picker_correlation" ("use_case_id", "created_at");
