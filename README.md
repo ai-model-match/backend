@@ -25,13 +25,14 @@ flowchart LR
     B -- No --> C[Return 404]
     B -- Yes --> D{Did Correlation ID match?}
     D -- No --> F[Calculate which ACTIVE Flow will serve the incoming request]
-    D -- Yes --> E[Select correlated Flow Ste]
+    D -- Yes --> E[Select correlated Flow]
     F --> G{Did any Flow match?}
     G -- No --> H[Select the Fallback Flow]
     G -- Yes --> I[Select the matched Flow]
-    E --> R[Return Response]
-    H --> R[Return Response]
-    I --> R[Return Response]
+    E --> L[Generated Flow Step output]
+    H --> L[Generated Flow Step output]
+    I --> L[Generated Flow Step output]
+    L --> M[Return Response]
 ```
 
 ## Developer Experience
