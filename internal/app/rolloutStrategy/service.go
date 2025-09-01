@@ -140,7 +140,12 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			}
 			// Round decimals on percentages
 			for i := range input.Configuration.Warmup.Goals {
-				input.Configuration.Warmup.Goals[i].FinalServePct = *(mm_utils.RoundTo2Decimals(&input.Configuration.Warmup.Goals[i].FinalServePct))
+				input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Warmup.Goals[i].FinalServePct))
+			}
+			for i := range input.Configuration.Escape.Rules {
+				for j := range input.Configuration.Escape.Rules[i].Rollback {
+					input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
+				}
 			}
 			// Finally, convert in JSON
 			if configuration, err := json.Marshal(input.Configuration); err != nil {

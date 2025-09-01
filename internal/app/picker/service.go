@@ -106,7 +106,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		r := rand.Float64() * 100
 		var cumulative float64
 		for i, f := range availableFlows {
-			cumulative += f.InitialServePct
+			cumulative += f.CurrentServePct
 			if r < cumulative {
 				selectedFlow = availableFlows[i]
 				break

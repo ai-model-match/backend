@@ -13,7 +13,7 @@ type flowEntity struct {
 	Description     string     `json:"description"`
 	Active          *bool      `json:"active"`
 	Fallback        *bool      `json:"fallback"`
-	InitialServePct *float64   `json:"initialServePct"`
+	CurrentServePct *float64   `json:"currentServePct"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
 	ClonedFromID    *uuid.UUID `json:"-"`

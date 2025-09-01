@@ -35,7 +35,7 @@ func (r rsWarmupPhaseDto) validate() error {
 	seen := make(map[string]bool)
 	totPct := float64(0)
 	for _, goal := range r.Goals {
-		totPct = totPct + *mm_utils.RoundTo2Decimals(&goal.FinalServePct)
+		totPct = totPct + *mm_utils.RoundTo2Decimals(goal.FinalServePct)
 		if _, exists := seen[goal.FlowID]; exists {
 			return errors.New("flow can have only one goal associated")
 		}
@@ -48,13 +48,13 @@ func (r rsWarmupPhaseDto) validate() error {
 }
 
 type rsFlowGoalDto struct {
-	FlowID        string  `json:"flow_id"`
-	FinalServePct float64 `json:"final_serve_pct"`
+	FlowID        string   `json:"flow_id"`
+	FinalServePct *float64 `json:"final_serve_pct"`
 }
 
 func (r rsFlowGoalDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.FlowID, validation.Required, is.UUID),
-		validation.Field(&r.FinalServePct, validation.Required, validation.Min(float64(0)), validation.Max(float64(100))),
+		validation.Field(&r.FinalServePct, validation.When(r.FinalServePct != nil, validation.Min(float64(0)), validation.Max(float64(100)))),
 	)
 }

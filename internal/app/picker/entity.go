@@ -24,7 +24,7 @@ type flowEntity struct {
 	UseCaseID       uuid.UUID
 	Active          bool
 	Fallback        bool
-	InitialServePct float64
+	CurrentServePct float64
 }
 
 type flowStepEntity struct {

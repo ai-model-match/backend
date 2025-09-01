@@ -23,7 +23,7 @@ type flowModel struct {
 	Description     string     `gorm:"column:description;type:text"`
 	Active          *bool      `gorm:"column:active;type:bool"`
 	Fallback        *bool      `gorm:"column:fallback;type:bool"`
-	InitialServePct *float64   `gorm:"column:initial_pct;type:double precision"`
+	CurrentServePct *float64   `gorm:"column:current_pct;type:double precision"`
 	CreatedAt       time.Time  `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
 	UpdatedAt       time.Time  `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
 	ClonedFromID    *uuid.UUID `gorm:"-"`

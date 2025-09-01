@@ -1,0 +1,1 @@
+ALTER TABLE "mm_flow" RENAME COLUMN "current_pct" TO "initial_pct";

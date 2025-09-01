@@ -72,7 +72,7 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 		Title:           input.Title,
 		Description:     input.Description,
 		Fallback:        mm_utils.BoolPtr(false),
-		InitialServePct: mm_utils.Float64Ptr(0),
+		CurrentServePct: mm_utils.Float64Ptr(0),
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	}
@@ -101,7 +101,7 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 					Title:           flow.Title,
 					Description:     flow.Description,
 					Fallback:        flow.Fallback,
-					InitialServePct: flow.InitialServePct,
+					CurrentServePct: flow.CurrentServePct,
 					CreatedAt:       flow.CreatedAt,
 					UpdatedAt:       flow.UpdatedAt,
 				},
@@ -158,8 +158,8 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			}
 			flow.Fallback = input.Fallback
 		}
-		if input.InitialServePct != nil {
-			flow.InitialServePct = mm_utils.RoundTo2Decimals(input.InitialServePct)
+		if input.CurrentServePct != nil {
+			flow.CurrentServePct = mm_utils.RoundTo2Decimals(input.CurrentServePct)
 		}
 		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
@@ -183,7 +183,7 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 					Title:           flow.Title,
 					Description:     flow.Description,
 					Fallback:        flow.Fallback,
-					InitialServePct: flow.InitialServePct,
+					CurrentServePct: flow.CurrentServePct,
 					CreatedAt:       flow.CreatedAt,
 					UpdatedAt:       flow.UpdatedAt,
 				},
@@ -240,7 +240,7 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 					Title:           flow.Title,
 					Description:     flow.Description,
 					Fallback:        flow.Fallback,
-					InitialServePct: flow.InitialServePct,
+					CurrentServePct: flow.CurrentServePct,
 					CreatedAt:       flow.CreatedAt,
 					UpdatedAt:       flow.UpdatedAt,
 				},
@@ -282,7 +282,7 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			Title:           input.NewTitle,
 			Description:     item.Description,
 			Fallback:        mm_utils.BoolPtr(false),
-			InitialServePct: item.InitialServePct,
+			CurrentServePct: item.CurrentServePct,
 			CreatedAt:       now,
 			UpdatedAt:       now,
 			ClonedFromID:    &item.ID,
@@ -303,7 +303,7 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 					Title:           flow.Title,
 					Description:     flow.Description,
 					Fallback:        flow.Fallback,
-					InitialServePct: flow.InitialServePct,
+					CurrentServePct: flow.CurrentServePct,
 					CreatedAt:       flow.CreatedAt,
 					UpdatedAt:       flow.UpdatedAt,
 					ClonedFromID:    flow.ClonedFromID,

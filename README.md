@@ -11,8 +11,8 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - You cannot delete an active Use Case.
 - You cannot activate a Use Case if it does not have an associated fallback Flow.
 - You can add, edit, or delete Use Case Steps even if the Use Case is active (caution).
-- You cannot have the same code associated to two or more Use Case Steps associated to the same Use Case..
-- An active Use Case indicated that it can receive incoming requests.
+- You cannot have the same code associated to two or more Use Case Steps associated to the same Use Case.
+- An active Use Case indicates that it can receive incoming requests.
 
 ### Flow Rules
 - You cannot delete a Flow that is marked as Fallback if it is related to an active Use Case.

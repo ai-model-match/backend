@@ -1,0 +1,1 @@
+ALTER TABLE "mm_flow_statistics" ADD COLUMN "current_pct" DOUBLE PRECISION NOT NULL DEFAULT 0;

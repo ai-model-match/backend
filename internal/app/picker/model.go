@@ -39,7 +39,7 @@ type flowModel struct {
 	UseCaseID       uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
 	Active          bool      `gorm:"column:active;type:bool"`
 	Fallback        bool      `gorm:"column:fallback;type:bool"`
-	InitialServePct float64   `gorm:"column:initial_pct;type:double precision"`
+	CurrentServePct float64   `gorm:"column:current_pct;type:double precision"`
 }
 
 func (m flowModel) TableName() string {

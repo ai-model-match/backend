@@ -40,12 +40,40 @@ body:json {
           {
             "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
             "min_feedback": 10,
-            "lower_score": 2.5
+            "lower_score": 2.5,
+            "rollback": [
+              {
+                "flow_id": "04f71099-e8a5-4d48-a290-b994c4d91104",
+                "final_serve_pct": 100
+              },
+              {
+                "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
+                "final_serve_pct": 0
+              },
+              {
+                "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
+                "final_serve_pct": 0
+              }
+            ]
           },
           {
             "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
             "min_feedback": 10,
-            "lower_score": 2.5
+            "lower_score": 2.5,
+            "rollback": [
+              {
+                "flow_id": "04f71099-e8a5-4d48-a290-b994c4d91104",
+                "final_serve_pct": 0
+              },
+              {
+                "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
+                "final_serve_pct": 100
+              },
+              {
+                "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
+                "final_serve_pct": 0
+              }
+            ]
           }
         ]
       },
