@@ -16,4 +16,5 @@ const (
 	TopicFlowV1            PubSubTopic = "topic/v1/flow"
 	TopicFlowStepV1        PubSubTopic = "topic/v1/flow-step"
 	TopicRolloutStrategyV1 PubSubTopic = "topic/v1/rollout-strategy"
+	TopicPickerV1          PubSubTopic = "topic/v1/picker"
 )

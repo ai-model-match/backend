@@ -62,3 +62,17 @@ type RolloutStrategyEventEntity struct {
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
 }
+
+type PickerEventEntity struct {
+	ID            uuid.UUID       `json:"id"`
+	UseCaseID     uuid.UUID       `json:"useCaseId"`
+	UseCaseStepID uuid.UUID       `json:"useCaseStepId"`
+	FlowID        uuid.UUID       `json:"flowId"`
+	FlowStepID    uuid.UUID       `json:"flowStepId"`
+	CorrelationID uuid.UUID       `json:"correlationId"`
+	IsFallback    bool            `json:"isFallback"`
+	InputMessage  json.RawMessage `json:"inputMessage"`
+	OutputMessage json.RawMessage `json:"outputMessage"`
+	Placeholders  json.RawMessage `json:"placeholders"`
+	CreatedAt     time.Time       `json:"createdAt"`
+}

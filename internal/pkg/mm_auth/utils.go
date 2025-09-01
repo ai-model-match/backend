@@ -93,7 +93,7 @@ func getAuthenticatedUserFromApiKey(ctx *gin.Context) (AuthenticatedUser, error)
 			Username:    authConfig.ApiKeyReadOnlyUsername,
 			Permissions: []string{M2M_READ},
 		}, nil
-	case authConfig.ApiKeyReadOnly:
+	case authConfig.ApiKeyReadWrite:
 		return AuthenticatedUser{
 			Username:    authConfig.ApiKeyReadWriteUsername,
 			Permissions: []string{M2M_READ, M2M_WRITE},

@@ -16,6 +16,7 @@ import (
 	"github.com/ai-model-match/backend/internal/app/flowStep"
 	"github.com/ai-model-match/backend/internal/app/flowStepStatistics"
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
+	"github.com/ai-model-match/backend/internal/app/picker"
 	"github.com/ai-model-match/backend/internal/app/rolloutStrategy"
 	"github.com/ai-model-match/backend/internal/app/useCase"
 	"github.com/ai-model-match/backend/internal/app/useCaseStep"
@@ -104,6 +105,7 @@ func main() {
 	flowStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flowStepStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	rolloutStrategy.Init(envs, dbConnection, pubSubAgent, v1Api)
+	picker.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Start the scheduler
 	if err := scheduler.Init(); err != nil {

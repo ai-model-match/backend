@@ -32,6 +32,7 @@ const (
 	FlowStepDeletedEvent        PubSubEventType = "flow-step.deleted"
 	RolloutStrategyCreatedEvent PubSubEventType = "rollout-strategy.created"
 	RolloutStrategyUpdatedEvent PubSubEventType = "rollout-strategy.updated"
+	PickerMatchedEvent          PubSubEventType = "picker.matched"
 )
 
 /*
@@ -53,6 +54,7 @@ var eventEntityFactories = map[PubSubEventType]func() any{
 	FlowStepDeletedEvent:        func() interface{} { return &FlowStepEventEntity{} },
 	RolloutStrategyCreatedEvent: func() interface{} { return &RolloutStrategyEventEntity{} },
 	RolloutStrategyUpdatedEvent: func() interface{} { return &RolloutStrategyEventEntity{} },
+	PickerMatchedEvent:          func() interface{} { return &PickerEventEntity{} },
 }
 
 /*

@@ -165,8 +165,10 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			return mm_err.ErrGeneric
 		}
 		// If this flow is the fallback one, remove fallback from others if any
-		if err = s.repository.makeFallbackConsistent(tx, flow); err != nil {
-			return mm_err.ErrGeneric
+		if *flow.Fallback {
+			if err = s.repository.makeFallbackConsistent(tx, flow); err != nil {
+				return mm_err.ErrGeneric
+			}
 		}
 		// Send an event of flow updated
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{

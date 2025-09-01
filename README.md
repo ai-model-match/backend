@@ -21,14 +21,17 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 flowchart LR
     A[Incoming Request] --> B{Is Use Case ACTIVE?}
     B -- No --> C[Return 404]
-    B -- Yes --> D[Calculate which ACTIVE Flow will serve the incoming request]
-    D --> E{Did any Flow match?}
-    E -- No --> F[Use Fallback as selected Flow]
-    E -- Yes --> G[Use the selected Flow]
-    F --> H[Generate Output using selected Flow]
-    G --> H[Generate Output using selected Flow]
-    H --> I[Return Response]
+    B -- Yes --> D{Did Correlation ID match?}
+    D -- No --> F[Calculate which ACTIVE Flow will serve the incoming request]
+    D -- Yes --> E[Select correlated Flow Ste]
+    F --> G{Did any Flow match?}
+    G -- No --> H[Select the Fallback Flow]
+    G -- Yes --> I[Select the matched Flow]
+    E --> R[Return Response]
+    H --> R[Return Response]
+    I --> R[Return Response]
 ```
+
 ## Developer Experience
 Below you can find instructions on how to start developing natively your project based on the Backend, leveraging a dockerized external Database.
 

@@ -1,0 +1,29 @@
+meta {
+  name: Pick
+  type: http
+  seq: 2
+}
+
+post {
+  url: http://127.0.0.1:8001/api/v1/picker
+  body: json
+  auth: apikey
+}
+
+auth:apikey {
+  key: X-Api-Key
+  value: api-key-read-write-replace-me
+  placement: header
+}
+
+body:json {
+  {
+    "useCaseCode": "code-A",
+    "useCaseStepCode": "code-step-1",
+    "correlationId": "2cde489c-272a-4c92-a12f-3bb1e8fa962d"
+  }
+}
+
+settings {
+  encodeUrl: true
+}
