@@ -2,7 +2,6 @@ package rolloutStrategy
 
 import (
 	"encoding/json"
-	"slices"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -127,7 +126,7 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		// Check request to change Rollout state
 		if input.RolloutState != nil && mm_pubsub.RolloutState(*input.RolloutState) != rolloutStrategy.RolloutState {
 			// Check the flow, if cna be move to next state
-			if ok := s.checkStateFlow(rolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
+			if ok := checkStateFlow(rolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
 				rolloutStrategy.RolloutState = mm_pubsub.RolloutState(*input.RolloutState)
 			} else {
 				return errRolloutStrategyTransitionStateNotAllowed
@@ -183,13 +182,4 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return rolloutStrategy, nil
-}
-
-func (s rolloutStrategyService) checkStateFlow(currentState mm_pubsub.RolloutState, nextState mm_pubsub.RolloutState) bool {
-	if nextStates, ok := allowedTransitions[currentState]; ok {
-		if slices.Contains(nextStates, nextState) {
-			return true
-		}
-	}
-	return false
 }
