@@ -66,13 +66,12 @@ func (s flowStepStatisticsService) createFlowStepStatistics(flowStepID uuid.UUID
 		}
 		// Create the new Flow Statistics with default values and store it
 		flowStepStatistics = flowStepStatisticsEntity{
-			ID:                 uuid.New(),
-			FlowStepID:         flowStep.ID,
-			FlowID:             flowStep.FlowID,
-			TotRequests:        mm_utils.Int64Ptr(0),
-			TotSessionRequests: mm_utils.Int64Ptr(0),
-			CreatedAt:          now,
-			UpdatedAt:          now,
+			ID:          uuid.New(),
+			FlowStepID:  flowStep.ID,
+			FlowID:      flowStep.FlowID,
+			TotRequests: mm_utils.Int64Ptr(0),
+			CreatedAt:   now,
+			UpdatedAt:   now,
 		}
 		if _, err := s.repository.saveFlowStepStatistics(tx, flowStepStatistics, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
@@ -97,9 +96,6 @@ func (s flowStepStatisticsService) updateStatistics(event mm_pubsub.PickerEventE
 		}
 		// Update statistics
 		*item.TotRequests++
-		if *event.IsFirstCorrelation {
-			*item.TotSessionRequests++
-		}
 		// And save
 		if _, err := s.repository.saveFlowStepStatistics(tx, item, mm_db.Update); err != nil {
 			return err

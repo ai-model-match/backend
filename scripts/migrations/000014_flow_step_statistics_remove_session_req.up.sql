@@ -1,0 +1,1 @@
+ALTER TABLE "mm_flow_step_statistics" DROP COLUMN "tot_sess_req";

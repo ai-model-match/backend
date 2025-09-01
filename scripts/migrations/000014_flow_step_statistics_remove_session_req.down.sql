@@ -1,0 +1,1 @@
+ALTER TABLE "mm_flow_step_statistics" ADD COLUMN "tot_sess_req" BIGINT NOT NULL DEFAULT 0;
