@@ -16,8 +16,10 @@ import (
 	"github.com/ai-model-match/backend/internal/app/useCaseStep"
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_env"
+	"github.com/ai-model-match/backend/internal/pkg/mm_log"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_scheduler"
+	ginzap "github.com/gin-contrib/zap"
 	"github.com/gin-gonic/gin"
 	"github.com/urfave/cli"
 	"go.uber.org/zap"
@@ -38,10 +40,7 @@ func main() {
 	// ENV Variables
 	envs := mm_env.ReadEnvs()
 	// Set Logger
-	logger := zap.Must(zap.NewProduction())
-	if envs.AppMode != "release" {
-		logger = zap.Must(zap.NewDevelopment())
-	}
+	logger := mm_log.NewLogger(envs.AppMode)
 	zap.ReplaceGlobals(logger)
 	// DB Connection
 	dbConnection := mm_db.NewDatabaseConnection(
@@ -61,7 +60,11 @@ func main() {
 	scheduler := mm_scheduler.NewScheduler()
 
 	// Init modules
-	r := gin.Default()
+	r := gin.New()
+	// Set GIN logger
+	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(logger, true))
+	// Init modules
 	v1Api := r.Group("cli")
 	healthCheck.Init(envs, dbConnection, v1Api)
 	auth.Init(envs, dbConnection, scheduler, v1Api)

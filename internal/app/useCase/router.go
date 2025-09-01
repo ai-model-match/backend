@@ -50,7 +50,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 			}
 			// Errors and output handler
 			if err != nil {
-				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				zap.L().Error("Something went wrong", zap.String("service", "use-case-router"), zap.Error(err))
 				mm_router.ReturnGenericError(ctx)
 				return
 			}
@@ -80,7 +80,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 			}
 			// Errors and output handler
 			if err != nil {
-				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				zap.L().Error("Something went wrong", zap.String("service", "use-case-router"), zap.Error(err))
 				mm_router.ReturnGenericError(ctx)
 				return
 			}
@@ -110,7 +110,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 			}
 			// Errors and output handler
 			if err != nil {
-				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				zap.L().Error("Something went wrong", zap.String("service", "use-case-router"), zap.Error(err))
 				mm_router.ReturnGenericError(ctx)
 				return
 			}
@@ -152,7 +152,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 			}
 			// Errors and output handler
 			if err != nil {
-				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				zap.L().Error("Something went wrong", zap.String("service", "use-case-router"), zap.Error(err))
 				mm_router.ReturnGenericError(ctx)
 				return
 			}
@@ -186,7 +186,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 			}
 			// Errors and output handler
 			if err != nil {
-				zap.L().Error("Something went wrong", zap.String("service", "useCase-router"), zap.Error(err))
+				zap.L().Error("Something went wrong", zap.String("service", "use-case-router"), zap.Error(err))
 				mm_router.ReturnGenericError(ctx)
 				return
 			}

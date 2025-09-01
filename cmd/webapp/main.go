@@ -23,9 +23,11 @@ import (
 	"github.com/ai-model-match/backend/internal/pkg/mm_cors"
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_env"
+	"github.com/ai-model-match/backend/internal/pkg/mm_log"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_router"
 	"github.com/ai-model-match/backend/internal/pkg/mm_scheduler"
+	ginzap "github.com/gin-contrib/zap"
 	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
@@ -43,10 +45,7 @@ func main() {
 	// ENV Variables
 	envs := mm_env.ReadEnvs()
 	// Set Logger
-	logger := zap.Must(zap.NewProduction())
-	if envs.AppMode != "release" {
-		logger = zap.Must(zap.NewDevelopment())
-	}
+	logger := mm_log.NewLogger(envs.AppMode)
 	zap.ReplaceGlobals(logger)
 	// DB Connection
 	dbConnection := mm_db.NewDatabaseConnection(
@@ -68,8 +67,11 @@ func main() {
 	// Start Server
 	zap.L().Info("Starting HTTP Server...", zap.String("service", "webapp"))
 	gin.SetMode(envs.AppMode)
-	r := gin.Default()
+	r := gin.New()
 	r.SetTrustedProxies(nil)
+	// Set GIN logger
+	r.Use(ginzap.Ginzap(logger, time.RFC3339, true))
+	r.Use(ginzap.RecoveryWithZap(logger, true))
 	// Cors Middleware
 	allowOrigins := []string{envs.AppCorsOrigin}
 	if envs.AppMode != "release" {
