@@ -12,8 +12,22 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - You can add, edit, or delete Steps even if the Use Case is Active.
 - You cannot unmark a Flow as Fallback if its related Use Case is Active.
 - You cannot delete a Flow that is marked as Fallback if its related Use Case is Active.
-- Any incoming request not handled by the Rollout Strategy will be served by the Fallback Flow even if it is not Active.
+- Any incoming request not handled by any of active Flows will be served by the Fallback Flow even if it is not Active.
+- A Use Case marked as ACTIVE indicates that can accept incoming requests (there is at least the Fallback Flow)
+- A Flow marked as ACTIVE indicates that can be considered as one of the available flows to handle the incoming request
+- The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the incoming request.
 
+```mermaid
+flowchart LR
+    A[Incoming Request] --> B{Is Use Case ACTIVE?}
+    B -- No --> C[Return 400 Bad Request]
+    B -- Yes --> D[Calculate which active Flows will serve the incoming request]
+    D --> E{Did any Flow match?}
+    E -- Yes --> F[Use the selected Flow]
+    E -- No --> G[Use Fallback as selected Flow]
+    F --> G[Generate Output using selected Flow]
+    G --> H[Return Response]
+```
 ## Developer Experience
 Below you can find instructions on how to start developing natively your project based on the Backend, leveraging a dockerized external Database.
 
