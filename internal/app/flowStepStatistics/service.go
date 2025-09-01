@@ -15,6 +15,7 @@ import (
 type flowStepStatisticsServiceInterface interface {
 	getFlowStepStatisticsByID(ctx *gin.Context, input getFlowStepStatisticsInputDto) (flowStepStatisticsEntity, error)
 	createFlowStepStatistics(flowStepID uuid.UUID) (flowStepStatisticsEntity, error)
+	updateStatistics(event mm_pubsub.PickerEventEntity) error
 }
 
 type flowStepStatisticsService struct {
@@ -82,4 +83,31 @@ func (s flowStepStatisticsService) createFlowStepStatistics(flowStepID uuid.UUID
 		return flowStepStatisticsEntity{}, errTransaction
 	}
 	return flowStepStatistics, nil
+}
+
+func (s flowStepStatisticsService) updateStatistics(event mm_pubsub.PickerEventEntity) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		// Find the flow step statistics
+		item, err := s.repository.getFlowStepStatisticsByFlowStepID(tx, event.FlowStepID, true)
+		if err != nil {
+			return mm_err.ErrGeneric
+		}
+		if mm_utils.IsEmpty(item) {
+			return errFlowStepStatisticsNotFound
+		}
+		// Update statistics
+		*item.TotRequests++
+		if *event.IsFirstCorrelation {
+			*item.TotSessionRequests++
+		}
+		// And save
+		if _, err := s.repository.saveFlowStepStatistics(tx, item, mm_db.Update); err != nil {
+			return err
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return errTransaction
+	}
+	return nil
 }

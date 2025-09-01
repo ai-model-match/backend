@@ -70,8 +70,8 @@ type PickerEventEntity struct {
 	FlowID             uuid.UUID       `json:"flowId"`
 	FlowStepID         uuid.UUID       `json:"flowStepId"`
 	CorrelationID      uuid.UUID       `json:"correlationId"`
-	IsFirstCorrelation bool            `json:"IsFirstCorrelation"`
-	IsFallback         bool            `json:"isFallback"`
+	IsFirstCorrelation *bool           `json:"IsFirstCorrelation"`
+	IsFallback         *bool           `json:"isFallback"`
 	InputMessage       json.RawMessage `json:"inputMessage"`
 	OutputMessage      json.RawMessage `json:"outputMessage"`
 	Placeholders       json.RawMessage `json:"placeholders"`

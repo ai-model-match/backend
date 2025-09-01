@@ -105,7 +105,7 @@ func main() {
 	flowStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flowStepStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	rolloutStrategy.Init(envs, dbConnection, pubSubAgent, v1Api)
-	picker.Init(envs, dbConnection, pubSubAgent, v1Api)
+	picker.Init(envs, dbConnection, pubSubAgent, scheduler, v1Api)
 
 	// Start the scheduler
 	if err := scheduler.Init(); err != nil {

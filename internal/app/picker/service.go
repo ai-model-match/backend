@@ -156,8 +156,8 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			FlowID:             selectedFlow.ID,
 			FlowStepID:         selectedFlowStep.ID,
 			CorrelationID:      mm_utils.GetUUIDFromString(input.CorrelationId),
-			IsFirstCorrelation: isFirstCorrelation,
-			IsFallback:         isFallback,
+			IsFirstCorrelation: &isFirstCorrelation,
+			IsFallback:         &isFallback,
 			InputMessage:       inputMsg,
 			OutputMessage:      selectedFlowStep.Configuration,
 			Placeholders:       selectedFlowStep.Placeholders,
@@ -166,10 +166,23 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		// Persist an event to Picker topic
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicPickerV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
-				EventID:     uuid.New(),
-				EventTime:   time.Now(),
-				EventType:   mm_pubsub.PickerMatchedEvent,
-				EventEntity: mm_pubsub.PickerEventEntity(pickedEntity),
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.PickerMatchedEvent,
+				EventEntity: &mm_pubsub.PickerEventEntity{
+					ID:                 pickedEntity.ID,
+					UseCaseID:          pickedEntity.UseCaseID,
+					UseCaseStepID:      pickedEntity.UseCaseStepID,
+					FlowID:             pickedEntity.FlowID,
+					FlowStepID:         pickedEntity.FlowStepID,
+					CorrelationID:      pickedEntity.CorrelationID,
+					IsFirstCorrelation: pickedEntity.IsFirstCorrelation,
+					IsFallback:         pickedEntity.IsFallback,
+					InputMessage:       pickedEntity.InputMessage,
+					OutputMessage:      pickedEntity.OutputMessage,
+					Placeholders:       pickedEntity.Placeholders,
+					CreatedAt:          pickedEntity.CreatedAt,
+				},
 			},
 		}); err != nil {
 			return err

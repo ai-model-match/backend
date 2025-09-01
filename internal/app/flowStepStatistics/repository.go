@@ -10,7 +10,7 @@ import (
 
 type flowStepStatisticsRepositoryInterface interface {
 	getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID) (flowStepEntity, error)
-	getFlowStepStatisticsByFlowStepID(tx *gorm.DB, flowIDflowStepID uuid.UUID, forUpdate bool) (flowStepStatisticsEntity, error)
+	getFlowStepStatisticsByFlowStepID(tx *gorm.DB, flowStepID uuid.UUID, forUpdate bool) (flowStepStatisticsEntity, error)
 	saveFlowStepStatistics(tx *gorm.DB, flowStepStatistics flowStepStatisticsEntity, operation mm_db.SaveOperation) (flowStepStatisticsEntity, error)
 }
 

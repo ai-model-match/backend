@@ -76,7 +76,7 @@ func main() {
 	flowStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	flowStepStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	rolloutStrategy.Init(envs, dbConnection, pubSubAgent, v1Api)
-	picker.Init(envs, dbConnection, pubSubAgent, v1Api)
+	picker.Init(envs, dbConnection, pubSubAgent, scheduler, v1Api)
 
 	// Create CLI app
 	app := cli.NewApp()

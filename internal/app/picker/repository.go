@@ -16,6 +16,7 @@ type pickerRepositoryInterface interface {
 	getFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) ([]flowEntity, error)
 	getFlowStepByFlowIdandUseCaseStepId(tx *gorm.DB, FlowID uuid.UUID, UseCaseStepID uuid.UUID) (flowStepEntity, error)
 	saveCorrelation(tx *gorm.DB, correlation pickerCorrelationEntity, operation mm_db.SaveOperation) (pickerCorrelationEntity, error)
+	cleanUpExpiredPickerCorrelations(tx *gorm.DB) error
 }
 
 type pickerRepository struct {
@@ -122,4 +123,7 @@ func (r pickerRepository) saveCorrelation(tx *gorm.DB, correlation pickerCorrela
 		return pickerCorrelationEntity{}, err
 	}
 	return correlation, nil
+}
+func (r pickerRepository) cleanUpExpiredPickerCorrelations(tx *gorm.DB) error {
+	return tx.Where("created_at < NOW() - INTERVAL '24 hours'").Delete(&pickerCorrelationModel{}).Error
 }
