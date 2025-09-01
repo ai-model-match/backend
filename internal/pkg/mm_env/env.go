@@ -35,6 +35,10 @@ type Envs struct {
 	AuthJwtSecret               string
 	AuthJwtAccessTokenDuration  int
 	AuthJwtRefreshTokenDuration int
+	AuthApiKeyReadOnly          string
+	AuthApiKeyReadWrite         string
+	AuthApiKeyReadOnlyUsername  string
+	AuthApiKeyReadWriteUsername string
 }
 
 /*
@@ -62,6 +66,10 @@ func ReadEnvs() *Envs {
 		AuthJwtSecret:               getMandatoryStringValue("AUTH_JWT_SECRET"),
 		AuthJwtAccessTokenDuration:  getMandatoryIntValue("AUTH_JWT_ACCESS_TOKEN_DURATION"),
 		AuthJwtRefreshTokenDuration: getMandatoryIntValue("AUTH_JWT_REFRESH_TOKEN_DURATION"),
+		AuthApiKeyReadOnly:          getMandatoryStringValue("AUTH_API_KEY_READ_ONLY"),
+		AuthApiKeyReadWrite:         getMandatoryStringValue("AUTH_API_KEY_READ_WRITE"),
+		AuthApiKeyReadOnlyUsername:  getMandatoryStringValue("AUTH_API_KEY_READ_ONLY_USERNAME"),
+		AuthApiKeyReadWriteUsername: getMandatoryStringValue("AUTH_API_KEY_READ_WRITE_USERNAME"),
 	}
 
 	return &envs

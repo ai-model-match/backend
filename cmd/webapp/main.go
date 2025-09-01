@@ -80,7 +80,14 @@ func main() {
 	r.Use(mm_cors.CorsMiddleware(allowOrigins))
 
 	// Init Authentication middleware
-	mm_auth.InitAuthMiddleware(envs.AuthJwtSecret)
+	authConfig := mm_auth.AuthConfig{
+		JwtSecret:               envs.AuthJwtSecret,
+		ApiKeyReadOnly:          envs.AuthApiKeyReadOnly,
+		ApiKeyReadWrite:         envs.AuthApiKeyReadWrite,
+		ApiKeyReadOnlyUsername:  envs.AuthApiKeyReadOnlyUsername,
+		ApiKeyReadWriteUsername: envs.AuthApiKeyReadWriteUsername,
+	}
+	mm_auth.InitAuthMiddleware(authConfig)
 
 	r.NoRoute(func(ctx *gin.Context) {
 		mm_router.ReturnNotFoundError(ctx, errors.New("endpoint-not-found"))

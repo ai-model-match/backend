@@ -21,7 +21,9 @@ List of permissions we can leverage to evaluate if an authenticated user can per
 before performing the API logic.
 */
 const (
-	READ    = "read"
-	WRITE   = "write"
-	REFRESH = "refresh"
+	READ      = "read"
+	WRITE     = "write"
+	REFRESH   = "refresh"
+	M2M_READ  = "m2m_read"
+	M2M_WRITE = "m2m_write"
 )
