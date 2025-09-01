@@ -5,19 +5,29 @@
 Thanks to AI Model Match, AI Product Managers will be able to iteratively identify the optimal combination of AI model, prompt, and configuration for their AI product. They will also be able to independently and automatically release and monitor new versions by collecting feedback and tracking requests, minimizing experimentation and implementation time while maximizing the product’s impact and effectiveness.
 
 ## Product Notes
+
+### Use Case Rules
 - You cannot have two Use Cases with the same code.
-- Two Steps within the same Use Case cannot have the same code, but the same code can be used in Steps of different Use Cases.
-- You cannot delete a Use Case if it is Active.
-- You cannot activate a Use Case if it does not have an associated Fallback Flow.
-- You can add, edit, or delete Steps even if the Use Case is Active.
-- You cannot unmark a Flow as Fallback if its related Use Case is Active.
-- You cannot delete a Flow that is marked as Fallback if its related Use Case is Active.
-- Any incoming request not handled by any of active Flows will be served by the Fallback Flow even if it is not Active.
-- A Use Case marked as ACTIVE indicates that can accept incoming requests (there is at least the Fallback Flow)
-- A Flow marked as ACTIVE indicates that can be considered as one of the available flows to handle the incoming request
-- The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the incoming request.
-- Thanks to the CorrelationID passed in the request, the system will use the same Flow on different steps to ensure consistency
-- Asking multiple times the same Step and Use Case on same Correlation ID is not going to impact statistics and Rollout strategy 
+- You cannot delete an active Use Case.
+- You cannot activate a Use Case if it does not have an associated fallback Flow.
+- You can add, edit, or delete Use Case Steps even if the Use Case is active (caution).
+- You cannot have the same code associated to two or more Use Case Steps associated to the same Use Case..
+- An active Use Case indicated that it can receive incoming requests.
+
+### Flow Rules
+- You cannot delete a Flow that is marked as Fallback if it is related to an active Use Case.
+- You cannot unmark a Flow as Fallback if it is related to an active Use Case.
+- An active Flow is considered an available Flow to serve incoming requests.
+- If any Flow is available or any Flow is picked to serve an incoming request, the fallback Flow will be used, even if not active.
+
+### Rollout Strategy Rules
+- The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the next incoming requests.
+
+### Picker Rules
+- You cannot send a request to a not active Use Case.
+- You can send a Correlation ID to ensure the same Flow will serve correlated requests.
+- Correlated requests will count once for statistics on Flows and Rollout Strategy.
+
 
 ```mermaid
 flowchart LR

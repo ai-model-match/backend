@@ -42,6 +42,8 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	var selectedFlow flowEntity
 	var selectedFlowStep flowStepEntity
 	var pickedEntity pickerEntity
+	var isFallback bool = false
+	var isFirstCorrelation bool = false
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	if item, err := s.repository.getUseCaseByCode(s.storage, input.UseCaseCode); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
@@ -66,6 +68,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			return pickerEntity{}, errCorrelationConflict
 		}
 		correlation = item
+		isFallback = correlation.Fallback
 	}
 	if !mm_utils.IsEmpty(correlation) {
 		// If correlation found, find immediately the Flow
@@ -112,6 +115,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		// If no flow has been randomly selected, use the fallback one
 		if mm_utils.IsEmpty(selectedFlow) {
 			selectedFlow = fallbackFlow
+			isFallback = true
 		}
 	}
 	// Retrieve the Step of the selected Flow
@@ -125,17 +129,19 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 
 	// Start transaction
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		// Now store the correlation for next requests
+		// Now store the correlation for next requests, updating old ones if needed
 		if mm_utils.IsEmpty(correlation) {
 			correlation = pickerCorrelationEntity{
 				ID:        mm_utils.GetUUIDFromString(input.CorrelationId),
 				UseCaseID: useCase.ID,
 				FlowID:    selectedFlow.ID,
-				Fallback:  selectedFlow == fallbackFlow,
+				Fallback:  isFallback,
 				CreatedAt: time.Now(),
 			}
 			if _, err := s.repository.saveCorrelation(s.storage, correlation, mm_db.Upsert); err != nil {
 				return mm_err.ErrGeneric
+			} else {
+				isFirstCorrelation = true
 			}
 		}
 		// Prepare response and event
@@ -144,17 +150,18 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			return mm_err.ErrGeneric
 		}
 		pickedEntity = pickerEntity{
-			ID:            uuid.New(),
-			UseCaseID:     useCase.ID,
-			UseCaseStepID: useCaseStep.ID,
-			FlowID:        selectedFlow.ID,
-			FlowStepID:    selectedFlowStep.ID,
-			CorrelationID: mm_utils.GetUUIDFromString(input.CorrelationId),
-			IsFallback:    selectedFlow == fallbackFlow,
-			InputMessage:  inputMsg,
-			OutputMessage: selectedFlowStep.Configuration,
-			Placeholders:  selectedFlowStep.Placeholders,
-			CreatedAt:     time.Now(),
+			ID:                 uuid.New(),
+			UseCaseID:          useCase.ID,
+			UseCaseStepID:      useCaseStep.ID,
+			FlowID:             selectedFlow.ID,
+			FlowStepID:         selectedFlowStep.ID,
+			CorrelationID:      mm_utils.GetUUIDFromString(input.CorrelationId),
+			IsFirstCorrelation: isFirstCorrelation,
+			IsFallback:         isFallback,
+			InputMessage:       inputMsg,
+			OutputMessage:      selectedFlowStep.Configuration,
+			Placeholders:       selectedFlowStep.Placeholders,
+			CreatedAt:          time.Now(),
 		}
 		// Persist an event to Picker topic
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicPickerV1, mm_pubsub.PubSubMessage{
