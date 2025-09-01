@@ -28,7 +28,7 @@ func (s authScheduler) init() {
 	// Declare all jobs to be scheduled
 	var jobsToSchedule []mm_scheduler.ScheduledJob = []mm_scheduler.ScheduledJob{
 		{
-			Schedule: "* * * * *", // Every hour at HH:00
+			Schedule: "0 * * * *", // Every hour at HH:00
 			Handler:  s.cleanUpExpiredRefreshToken,
 			Parameters: mm_scheduler.ScheduledJobParameter{
 				JobID: 29347129,
