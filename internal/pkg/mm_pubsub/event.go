@@ -1,6 +1,7 @@
 package mm_pubsub
 
 import (
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,4 +67,5 @@ type PubSubEvent struct {
 	EventTime   time.Time       `json:"eventTime"`
 	EventType   PubSubEventType `json:"eventType"`
 	EventEntity interface{}     `json:"eventEntity"`
+	EventState  *sync.WaitGroup `json:"-"`
 }

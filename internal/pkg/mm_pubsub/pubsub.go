@@ -27,6 +27,7 @@ type PubSubAgent struct {
 	quit              chan struct{}
 	closed            bool
 	persistEventsOnDb bool
+	syncMode          bool
 }
 
 type EventToPublish struct {
@@ -37,12 +38,13 @@ type EventToPublish struct {
 /*
 NewPubSubAgent initialies a new pub-sub Agent.
 */
-func NewPubSubAgent(persistEventsOnDb bool) *PubSubAgent {
+func NewPubSubAgent(persistEventsOnDb bool, syncMode bool) *PubSubAgent {
 	zap.L().Info("Start creatimg PubSub agent...", zap.String("service", "pub-sub"))
 	pubsub := &PubSubAgent{
 		subs:              make(map[string][]chan PubSubMessage),
 		quit:              make(chan struct{}),
 		persistEventsOnDb: persistEventsOnDb,
+		syncMode:          syncMode,
 	}
 	zap.L().Info("PubSub agent created!", zap.String("service", "pub-sub"))
 	return pubsub
@@ -80,7 +82,11 @@ func (b *PubSubAgent) Persist(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMe
 Publish a message to a specific topic. The message will be deliver to all the active channels.
 */
 func (b *PubSubAgent) Publish(event EventToPublish) error {
-	go b.publishMessageToTopic(event.pubsubTopic, event.msg)
+	if b.syncMode {
+		b.publishMessageToTopic(event.pubsubTopic, event.msg)
+	} else {
+		go b.publishMessageToTopic(event.pubsubTopic, event.msg)
+	}
 	return nil
 }
 
@@ -89,7 +95,7 @@ Publish a message to a specific topic. The message will be deliver to all the ac
 */
 func (b *PubSubAgent) PublishBulk(events []EventToPublish) error {
 	for _, event := range events {
-		go b.publishMessageToTopic(event.pubsubTopic, event.msg)
+		b.Publish(event)
 	}
 	return nil
 }
@@ -111,9 +117,16 @@ func (b *PubSubAgent) publishMessageToTopic(pubsubTopic PubSubTopic, msg PubSubM
 	if b.closed {
 		return
 	}
+	// Set Waiting status in Event
+	var wg sync.WaitGroup
+	wg.Add(len(b.subs[topic]))
+	msg.Message.EventState = &wg
+	// Send the message to all the subscribers
+	defer wg.Wait()
 	for _, ch := range b.subs[topic] {
 		ch <- msg
 	}
+
 }
 
 /*

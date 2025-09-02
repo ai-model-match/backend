@@ -28,6 +28,7 @@ type Envs struct {
 	AppCorsOrigin               string
 	SearchRelevanceThreshold    float64
 	PubSubPersistEventsOnDb     bool
+	PubSubSyncMode              bool
 	AuthUserReadOnlyUsername    string
 	AuthUserReadOnlyPassword    string
 	AuthUserReadWriteUsername   string
@@ -59,6 +60,7 @@ func ReadEnvs() *Envs {
 		AppCorsOrigin:               getMandatoryStringValue("APP_CORS_ORIGIN"),
 		SearchRelevanceThreshold:    getMandatoryFloatValue("SEARCH_RELEVANCE_THRESHOLD"),
 		PubSubPersistEventsOnDb:     getMandatoryBooleanValue("PUBSUB_PERSIST_EVENTS_ON_DB"),
+		PubSubSyncMode:              getMandatoryBooleanValue("PUBSUB_SYNC_MODE"),
 		AuthUserReadOnlyUsername:    getMandatoryStringValue("AUTH_USER_READ_ONLY_USERNAME"),
 		AuthUserReadOnlyPassword:    getMandatoryStringValue("AUTH_USER_READ_ONLY_PASSWORD"),
 		AuthUserReadWriteUsername:   getMandatoryStringValue("AUTH_USER_READ_WRITE_USERNAME"),

@@ -60,7 +60,7 @@ func main() {
 		envs.AppMode,
 	)
 	// PUB-SUB agent
-	pubSubAgent := mm_pubsub.NewPubSubAgent(envs.PubSubPersistEventsOnDb)
+	pubSubAgent := mm_pubsub.NewPubSubAgent(envs.PubSubPersistEventsOnDb, envs.PubSubSyncMode)
 
 	// Scheduler
 	scheduler := mm_scheduler.NewScheduler()

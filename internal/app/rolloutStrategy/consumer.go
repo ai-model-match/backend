@@ -43,6 +43,8 @@ func (r rolloutStrategyConsumer) subscribe() {
 					)
 					return
 				}
+				// ACK message
+				defer msg.Message.EventState.Done()
 				zap.L().Info(
 					"Received Event Message",
 					zap.String("service", "rollout-strategy-consumer"),

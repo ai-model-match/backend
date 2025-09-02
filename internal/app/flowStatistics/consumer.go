@@ -43,6 +43,8 @@ func (r flowStatisticsConsumer) subscribe() {
 					)
 					return
 				}
+				// ACK message
+				defer msg.Message.EventState.Done()
 				zap.L().Info(
 					"Received Event Message",
 					zap.String("service", "flow-statistics-consumer"),
@@ -86,6 +88,8 @@ func (r flowStatisticsConsumer) subscribe() {
 					)
 					return
 				}
+				// ACK message
+				defer msg.Message.EventState.Done()
 				zap.L().Info(
 					"Received Event Message",
 					zap.String("service", "flow-statistics-consumer"),
@@ -124,6 +128,8 @@ func (r flowStatisticsConsumer) subscribe() {
 					)
 					return
 				}
+				// ACK message
+				defer msg.Message.EventState.Done()
 				zap.L().Info(
 					"Received Event Message",
 					zap.String("service", "flow-statistics-consumer"),
