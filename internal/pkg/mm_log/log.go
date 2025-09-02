@@ -2,6 +2,7 @@ package mm_log
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 	"time"
 
@@ -68,4 +69,10 @@ func NewLogger(appMode string) *zap.Logger {
 	}
 	defer logger.Sync()
 	return logger
+}
+
+func LogPanicError(r any, serviceName string, message string) {
+	buff := make([]byte, 1<<16)
+	n := runtime.Stack(buff, false)
+	zap.L().Error(message, zap.String("service", serviceName), zap.Any("panic", r), zap.ByteString("stack", buff[:n]))
 }

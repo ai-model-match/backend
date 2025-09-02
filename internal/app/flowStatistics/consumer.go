@@ -1,6 +1,7 @@
 package flowStatistics
 
 import (
+	"github.com/ai-model-match/backend/internal/pkg/mm_log"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"go.uber.org/zap"
 )
@@ -30,7 +31,7 @@ func (r flowStatisticsConsumer) subscribe() {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						zap.L().Error("Panic occured in handling a new message", zap.String("service", "flow-statistics-consumer"))
+						mm_log.LogPanicError(r, "flow-statistics-consumer", "Panic occurred in handling a new message")
 					}
 				}()
 				msg, channelOpen := <-messageChannel
@@ -73,7 +74,7 @@ func (r flowStatisticsConsumer) subscribe() {
 			func() {
 				defer func() {
 					if r := recover(); r != nil {
-						zap.L().Error("Panic occured in handling a new message", zap.String("service", "flow-statistics-consumer"))
+						mm_log.LogPanicError(r, "flow-statistics-consumer", "Panic occurred in handling a new message")
 					}
 				}()
 				msg, channelOpen := <-messageChannel
