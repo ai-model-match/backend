@@ -12,6 +12,7 @@ type flowStatisticsRepositoryInterface interface {
 	getFlowByID(tx *gorm.DB, flowID uuid.UUID) (flowEntity, error)
 	getFlowStatisticsByFlowID(tx *gorm.DB, flowID uuid.UUID, forUpdate bool) (flowStatisticsEntity, error)
 	saveFlowStatistics(tx *gorm.DB, flowStatistics flowStatisticsEntity, operation mm_db.SaveOperation) (flowStatisticsEntity, error)
+	cleanupFlowStatisticsByUseCaseId(tx *gorm.DB, useCaseID uuid.UUID) error
 }
 
 type flowStatisticsRepository struct {
@@ -65,4 +66,16 @@ func (r flowStatisticsRepository) saveFlowStatistics(tx *gorm.DB, flowStatistics
 		return flowStatisticsEntity{}, err
 	}
 	return flowStatistics, nil
+}
+
+func (r flowStatisticsRepository) cleanupFlowStatisticsByUseCaseId(tx *gorm.DB, useCaseID uuid.UUID) error {
+	result := tx.Model(&flowStatisticsModel{}).
+		Where("use_case_id = ?", useCaseID).
+		UpdateColumns(map[string]any{
+			"tot_req":      0,
+			"tot_sess_req": 0,
+			"tot_feedback": 0,
+			"avg_score":    0,
+		})
+	return result.Error
 }

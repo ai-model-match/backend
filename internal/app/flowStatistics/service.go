@@ -16,6 +16,7 @@ type flowStatisticsServiceInterface interface {
 	getFlowStatisticsByID(ctx *gin.Context, input getFlowStatisticsInputDto) (flowStatisticsEntity, error)
 	createFlowStatistics(flowID uuid.UUID) (flowStatisticsEntity, error)
 	updateStatistics(event mm_pubsub.PickerEventEntity) error
+	cleanupStatistics(event mm_pubsub.RolloutStrategyEventEntity) error
 }
 
 type flowStatisticsService struct {
@@ -113,4 +114,8 @@ func (s flowStatisticsService) updateStatistics(event mm_pubsub.PickerEventEntit
 		return errTransaction
 	}
 	return nil
+}
+
+func (s flowStatisticsService) cleanupStatistics(event mm_pubsub.RolloutStrategyEventEntity) error {
+	return s.repository.cleanupFlowStatisticsByUseCaseId(s.storage, event.UseCaseID)
 }

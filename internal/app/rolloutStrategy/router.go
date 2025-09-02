@@ -86,6 +86,10 @@ func (r rolloutStrategyRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}
+			if err == errRolloutStrategyNotEditableWhileActive {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
 			// Errors and output handler
 			if err != nil {
 				zap.L().Error("Something went wrong", zap.String("service", "rollout-strategy-router"), zap.Error(err))

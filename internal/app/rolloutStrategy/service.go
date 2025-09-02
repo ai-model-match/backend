@@ -123,6 +123,10 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 		} else {
 			rolloutStrategy = item
 		}
+		// Avoid change configuration with Rollout State different from INIT
+		if input.Configuration != nil && rolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
+			return errRolloutStrategyNotEditableWhileActive
+		}
 		// Check request to change Rollout state
 		if input.RolloutState != nil && mm_pubsub.RolloutState(*input.RolloutState) != rolloutStrategy.RolloutState {
 			// Check the flow, if cna be move to next state

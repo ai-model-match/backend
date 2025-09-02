@@ -16,6 +16,7 @@ type flowStepStatisticsServiceInterface interface {
 	getFlowStepStatisticsByID(ctx *gin.Context, input getFlowStepStatisticsInputDto) (flowStepStatisticsEntity, error)
 	createFlowStepStatistics(flowStepID uuid.UUID) (flowStepStatisticsEntity, error)
 	updateStatistics(event mm_pubsub.PickerEventEntity) error
+	cleanupStatistics(event mm_pubsub.RolloutStrategyEventEntity) error
 }
 
 type flowStepStatisticsService struct {
@@ -106,4 +107,8 @@ func (s flowStepStatisticsService) updateStatistics(event mm_pubsub.PickerEventE
 		return errTransaction
 	}
 	return nil
+}
+
+func (s flowStepStatisticsService) cleanupStatistics(event mm_pubsub.RolloutStrategyEventEntity) error {
+	return s.repository.cleanupFlowStepStatisticsByUseCaseId(s.storage, event.UseCaseID)
 }

@@ -22,6 +22,7 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 
 ### Rollout Strategy Rules
 - The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the next incoming requests.
+- The Rollout Strategy configuration can be updated only in INIT status.
 
 ### Picker Rules
 - You cannot send a request to a not active Use Case.

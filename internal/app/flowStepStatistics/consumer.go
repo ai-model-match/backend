@@ -104,4 +104,46 @@ func (r flowStepStatisticsConsumer) subscribe() {
 			}()
 		}
 	}()
+
+	go func() {
+		messageChannel := r.pubSub.Subscribe(mm_pubsub.TopicRolloutStrategyV1)
+		isChannelOpen := true
+		for isChannelOpen {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						mm_log.LogPanicError(r, "flow-step-statistics-consumer", "Panic occurred in handling a new message")
+					}
+				}()
+				msg, channelOpen := <-messageChannel
+				if !channelOpen {
+					isChannelOpen = false
+					zap.L().Info(
+						"Channel closed. No more events to listen... quit!",
+						zap.String("service", "flow-step-statistics-consumer"),
+					)
+					return
+				}
+				zap.L().Info(
+					"Received Event Message",
+					zap.String("service", "flow-step-statistics-consumer"),
+					zap.String("event-id", msg.Message.EventID.String()),
+					zap.String("event-type", string(msg.Message.EventType)),
+				)
+				if msg.Message.EventType != mm_pubsub.RolloutStrategyCreatedEvent && msg.Message.EventType != mm_pubsub.RolloutStrategyUpdatedEvent {
+					return
+				}
+				event := msg.Message.EventEntity.(*mm_pubsub.RolloutStrategyEventEntity)
+				// Consider only events with Warmup Status
+				if event.RolloutState != mm_pubsub.RolloutStateWarmup {
+					return
+				}
+				// Cleanup statistics on Rollout Strategy start
+				if err := r.service.cleanupStatistics(*event); err != nil {
+					zap.L().Error("Impossible to cleanup Statistics for Flow Step", zap.String("service", "flow-step-statistics-consumer"))
+					return
+				}
+			}()
+		}
+	}()
 }

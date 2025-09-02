@@ -12,6 +12,7 @@ type flowStepStatisticsRepositoryInterface interface {
 	getFlowStepByID(tx *gorm.DB, flowStepID uuid.UUID) (flowStepEntity, error)
 	getFlowStepStatisticsByFlowStepID(tx *gorm.DB, flowStepID uuid.UUID, forUpdate bool) (flowStepStatisticsEntity, error)
 	saveFlowStepStatistics(tx *gorm.DB, flowStepStatistics flowStepStatisticsEntity, operation mm_db.SaveOperation) (flowStepStatisticsEntity, error)
+	cleanupFlowStepStatisticsByUseCaseId(tx *gorm.DB, useCaseID uuid.UUID) error
 }
 
 type flowStepStatisticsRepository struct {
@@ -65,4 +66,13 @@ func (r flowStepStatisticsRepository) saveFlowStepStatistics(tx *gorm.DB, flowSt
 		return flowStepStatisticsEntity{}, err
 	}
 	return flowStepStatistics, nil
+}
+
+func (r flowStepStatisticsRepository) cleanupFlowStepStatisticsByUseCaseId(tx *gorm.DB, useCaseID uuid.UUID) error {
+	result := tx.Model(&flowStepStatisticsModel{}).
+		Where("flow_step_id IN (?)",
+			tx.Model(&flowStepModel{}).Select("id").Where("use_case_id = ?", useCaseID),
+		).
+		Update("tot_req", 0)
+	return result.Error
 }
