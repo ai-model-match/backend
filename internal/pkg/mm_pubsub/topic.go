@@ -14,6 +14,7 @@ const (
 	TopicUseCaseV1         PubSubTopic = "topic/v1/use-case"
 	TopicUseCaseStepV1     PubSubTopic = "topic/v1/use-case-step"
 	TopicFlowV1            PubSubTopic = "topic/v1/flow"
+	TopicFlowStatisticsV1  PubSubTopic = "topic/v1/flow-statistics"
 	TopicFlowStepV1        PubSubTopic = "topic/v1/flow-step"
 	TopicRolloutStrategyV1 PubSubTopic = "topic/v1/rollout-strategy"
 	TopicPickerV1          PubSubTopic = "topic/v1/picker"

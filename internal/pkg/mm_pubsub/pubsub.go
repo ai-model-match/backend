@@ -65,7 +65,10 @@ Persist a message and its topic on DB
 func (b *PubSubAgent) Persist(tx *gorm.DB, pubsubTopic PubSubTopic, msg PubSubMessage) (EventToPublish, error) {
 	// Skip store events based on configuration
 	if !b.persistEventsOnDb {
-		return EventToPublish{}, nil
+		return EventToPublish{
+			pubsubTopic: pubsubTopic,
+			msg:         msg,
+		}, nil
 	}
 	rawMessage, err := json.Marshal(msg.Message)
 	if err != nil {

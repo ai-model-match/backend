@@ -28,6 +28,8 @@ const (
 	FlowCreatedEvent            PubSubEventType = "flow.created"
 	FlowUpdatedEvent            PubSubEventType = "flow.updated"
 	FlowDeletedEvent            PubSubEventType = "flow.deleted"
+	FlowStatisticsCreatedEvent  PubSubEventType = "flow-statistics.created"
+	FlowStatisticsUpdatedEvent  PubSubEventType = "flow-statistics.updated"
 	FlowStepCreatedEvent        PubSubEventType = "flow-step.created"
 	FlowStepUpdatedEvent        PubSubEventType = "flow-step.updated"
 	FlowStepDeletedEvent        PubSubEventType = "flow-step.deleted"
@@ -51,6 +53,8 @@ var eventEntityFactories = map[PubSubEventType]func() any{
 	FlowCreatedEvent:            func() interface{} { return &FlowEventEntity{} },
 	FlowUpdatedEvent:            func() interface{} { return &FlowEventEntity{} },
 	FlowDeletedEvent:            func() interface{} { return &FlowEventEntity{} },
+	FlowStatisticsCreatedEvent:  func() interface{} { return &FlowStatisticsEventEntity{} },
+	FlowStatisticsUpdatedEvent:  func() interface{} { return &FlowStatisticsEventEntity{} },
 	FlowStepCreatedEvent:        func() interface{} { return &FlowStepEventEntity{} },
 	FlowStepUpdatedEvent:        func() interface{} { return &FlowStepEventEntity{} },
 	FlowStepDeletedEvent:        func() interface{} { return &FlowStepEventEntity{} },

@@ -19,6 +19,7 @@ import (
 	"github.com/ai-model-match/backend/internal/app/healthCheck"
 	"github.com/ai-model-match/backend/internal/app/picker"
 	"github.com/ai-model-match/backend/internal/app/rolloutStrategy"
+	"github.com/ai-model-match/backend/internal/app/rsEngine"
 	"github.com/ai-model-match/backend/internal/app/useCase"
 	"github.com/ai-model-match/backend/internal/app/useCaseStep"
 	"github.com/ai-model-match/backend/internal/pkg/mm_auth"
@@ -107,6 +108,7 @@ func main() {
 	rolloutStrategy.Init(envs, dbConnection, pubSubAgent, v1Api)
 	picker.Init(envs, dbConnection, pubSubAgent, scheduler, v1Api)
 	feedback.Init(envs, dbConnection, pubSubAgent, v1Api)
+	rsEngine.Init(envs, dbConnection, pubSubAgent, scheduler)
 
 	// Start the scheduler
 	if err := scheduler.Init(); err != nil {
