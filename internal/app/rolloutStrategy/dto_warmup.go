@@ -3,6 +3,7 @@ package rolloutStrategy
 import (
 	"errors"
 
+	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
@@ -35,7 +36,7 @@ func (r rsWarmupPhaseDto) validate() error {
 	seen := make(map[string]bool)
 	totPct := float64(0)
 	for _, goal := range r.Goals {
-		totPct = totPct + *mm_utils.RoundTo2Decimals(goal.FinalServePct)
+		totPct = totPct + *mm_utils.RoundTo2DecimalsPtr(goal.FinalServePct)
 		if _, exists := seen[goal.FlowID]; exists {
 			return errors.New("flow can have only one goal associated")
 		}
@@ -45,6 +46,18 @@ func (r rsWarmupPhaseDto) validate() error {
 		return errors.New("goals can have a maximum of 100% as sum")
 	}
 	return nil
+}
+
+func (r rsWarmupPhaseDto) toEntity() mm_pubsub.RsWarmupPhase {
+	goals := make([]mm_pubsub.RsFlowGoal, len(r.Goals))
+	for i, goal := range r.Goals {
+		goals[i] = goal.toEntity()
+	}
+	return mm_pubsub.RsWarmupPhase{
+		IntervalMins:     r.IntervalMins,
+		IntervalSessReqs: r.IntervalSessReqs,
+		Goals:            goals,
+	}
 }
 
 type rsFlowGoalDto struct {
@@ -57,4 +70,11 @@ func (r rsFlowGoalDto) validate() error {
 		validation.Field(&r.FlowID, validation.Required, is.UUID),
 		validation.Field(&r.FinalServePct, validation.When(r.FinalServePct != nil, validation.Min(float64(0)), validation.Max(float64(100)))),
 	)
+}
+
+func (r rsFlowGoalDto) toEntity() mm_pubsub.RsFlowGoal {
+	return mm_pubsub.RsFlowGoal{
+		FlowID:        r.FlowID,
+		FinalServePct: *r.FinalServePct,
+	}
 }

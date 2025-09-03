@@ -50,8 +50,11 @@ func (r rolloutStrategyRepository) getRolloutStrategyByUseCaseID(tx *gorm.DB, us
 }
 
 func (r rolloutStrategyRepository) saveRolloutStrategy(tx *gorm.DB, rolloutStrategy rolloutStrategyEntity, operation mm_db.SaveOperation) (rolloutStrategyEntity, error) {
-	var model = rolloutStrategyModel(rolloutStrategy)
 	var err error
+	var model rolloutStrategyModel
+	if err = model.fromEntity(rolloutStrategy); err != nil {
+		return rolloutStrategyEntity{}, err
+	}
 	switch operation {
 	case mm_db.Create:
 		err = tx.Create(model).Error

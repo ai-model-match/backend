@@ -159,7 +159,7 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 			flow.Fallback = input.Fallback
 		}
 		if input.CurrentServePct != nil {
-			flow.CurrentServePct = mm_utils.RoundTo2Decimals(input.CurrentServePct)
+			flow.CurrentServePct = mm_utils.RoundTo2DecimalsPtr(input.CurrentServePct)
 		}
 		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric

@@ -185,7 +185,7 @@ func (s flowStatisticsService) updateFeedbackStatistics(event mm_pubsub.Feedback
 		// Update statistics
 		item.TotFeedback++
 		newAvg := ((item.AvgScore * float64(item.TotFeedback-1)) + event.Score) / float64(item.TotFeedback)
-		item.AvgScore = *mm_utils.RoundTo2Decimals(&newAvg)
+		item.AvgScore = *mm_utils.RoundTo2DecimalsPtr(&newAvg)
 		// And save
 		if _, err := s.repository.saveFlowStatistics(tx, item, mm_db.Update); err != nil {
 			return err

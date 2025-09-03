@@ -1,7 +1,6 @@
 package rolloutStrategy
 
 import (
-	"encoding/json"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -67,14 +66,21 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 			return errRolloutStrategyAlreadyExists
 		}
 		// Create the new Rollout Strategy with default values and store it
-		config, _ := json.Marshal(map[string]interface{}{})
 		rolloutStrategy = rolloutStrategyEntity{
-			ID:            uuid.New(),
-			UseCaseID:     useCaseID,
-			RolloutState:  mm_pubsub.RolloutStateInit,
-			Configuration: json.RawMessage(config),
-			CreatedAt:     now,
-			UpdatedAt:     now,
+			ID:           uuid.New(),
+			UseCaseID:    useCaseID,
+			RolloutState: mm_pubsub.RolloutStateInit,
+			Configuration: mm_pubsub.RSConfiguration{
+				Warmup: nil,
+				Escape: nil,
+				Adaptive: mm_pubsub.RsAdaptivePhase{
+					MinFeedback:  0,
+					MaxStepPct:   10,
+					IntervalMins: 10,
+				},
+			},
+			CreatedAt: now,
+			UpdatedAt: now,
 		}
 		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
@@ -136,13 +142,8 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
 			// Now, if we are activating Rollout Strategy (from INIT to WARMUP), but there is no warmup config, move to ADAPT
-			var configuration rsConfigInputDto
-			if err := json.Unmarshal(rolloutStrategy.Configuration, &configuration); err != nil {
-				return err
-			} else {
-				if rolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(configuration.Warmup) {
-					rolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
-				}
+			if rolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(rolloutStrategy.Configuration.Warmup) {
+				rolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
 			}
 		}
 		// Check request to change Rollout configuration
@@ -154,23 +155,23 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			// Round decimals on percentages for Warmup
 			if !mm_utils.IsEmpty(input.Configuration.Warmup) {
 				for i := range input.Configuration.Warmup.Goals {
-					input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Warmup.Goals[i].FinalServePct))
+					input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Warmup.Goals[i].FinalServePct))
 				}
 			}
 			// Round decimals on percentages for Escape
 			if !mm_utils.IsEmpty(input.Configuration.Escape) {
 				for i := range input.Configuration.Escape.Rules {
+					input.Configuration.Escape.Rules[i].LowerScore = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Escape.Rules[i].LowerScore))
 					for j := range input.Configuration.Escape.Rules[i].Rollback {
-						input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
+						input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
 					}
 				}
 			}
-			// Finally, convert in JSON
-			if configuration, err := json.Marshal(input.Configuration); err != nil {
-				return errRolloutStrategyWrongConfigFormat
-			} else {
-				rolloutStrategy.Configuration = configuration
-			}
+			// Round decimals on percentages for Adaptive
+			input.Configuration.Adaptive.MaxStepPct = (mm_utils.RoundTo2Decimals(input.Configuration.Adaptive.MaxStepPct))
+
+			// Update the configuration
+			rolloutStrategy.Configuration = input.Configuration.toEntity()
 		}
 		// Save Rollout Strategy
 		rolloutStrategy.UpdatedAt = now

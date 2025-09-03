@@ -141,9 +141,19 @@ func Int64Ptr(b int64) *int64 {
 }
 
 /*
-Round a Float value to max 2 decimals
+Round a Float value pointer to max 2 decimals
 */
-func RoundTo2Decimals(val *float64) *float64 {
+func RoundTo2DecimalsPtr(val *float64) *float64 {
+	if val == nil {
+		return nil
+	}
 	v := math.Round(*val*100) / 100
 	return &v
+}
+
+/*
+Round a Float value to max 2 decimals
+*/
+func RoundTo2Decimals(val float64) float64 {
+	return math.Round(val*100) / 100
 }

@@ -30,5 +30,32 @@ func (m rolloutStrategyModel) TableName() string {
 }
 
 func (m rolloutStrategyModel) toEntity() rolloutStrategyEntity {
-	return rolloutStrategyEntity(m)
+	// Remap the stored JSON config in the object configuration
+	var config mm_pubsub.RSConfiguration
+	if err := json.Unmarshal(m.Configuration, &config); err != nil {
+		return rolloutStrategyEntity{}
+	}
+	return rolloutStrategyEntity{
+		ID:            m.ID,
+		UseCaseID:     m.UseCaseID,
+		RolloutState:  m.RolloutState,
+		Configuration: config,
+		CreatedAt:     m.CreatedAt,
+		UpdatedAt:     m.UpdatedAt,
+	}
+}
+
+func (m *rolloutStrategyModel) fromEntity(e rolloutStrategyEntity) error {
+	// Convert the object configuration in JSON for saving
+	if config, err := json.Marshal(e.Configuration); err != nil {
+		return err
+	} else {
+		m.ID = e.ID
+		m.UseCaseID = e.UseCaseID
+		m.RolloutState = e.RolloutState
+		m.Configuration = config
+		m.CreatedAt = e.CreatedAt
+		m.UpdatedAt = e.UpdatedAt
+		return nil
+	}
 }

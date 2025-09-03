@@ -71,9 +71,48 @@ type RolloutStrategyEventEntity struct {
 	ID            uuid.UUID       `json:"id"`
 	UseCaseID     uuid.UUID       `json:"useCaseId"`
 	RolloutState  RolloutState    `json:"rolloutState"`
-	Configuration json.RawMessage `json:"configuration"`
+	Configuration RSConfiguration `json:"configuration"`
 	CreatedAt     time.Time       `json:"createdAt"`
 	UpdatedAt     time.Time       `json:"updatedAt"`
+}
+
+type RSConfiguration struct {
+	Warmup   *RsWarmupPhase  `json:"warmup"`
+	Escape   *RsEscapePhase  `json:"escape"`
+	Adaptive RsAdaptivePhase `json:"adaptive"`
+}
+
+type RsWarmupPhase struct {
+	IntervalMins     *int64       `json:"interval_mins"`
+	IntervalSessReqs *int64       `json:"interval_sess_req"`
+	Goals            []RsFlowGoal `json:"goals"`
+}
+
+type RsFlowGoal struct {
+	FlowID        string  `json:"flow_id"`
+	FinalServePct float64 `json:"final_serve_pct"`
+}
+
+type RsEscapePhase struct {
+	Rules []RsEscapeRule `json:"rules"`
+}
+
+type RsEscapeRule struct {
+	FlowID      string             `json:"flow_id"`
+	MinFeedback int64              `json:"min_feedback"`
+	LowerScore  float64            `json:"lower_score"`
+	Rollback    []RsEscapeRollback `json:"rollback"`
+}
+
+type RsEscapeRollback struct {
+	FlowID        string  `json:"flow_id"`
+	FinalServePct float64 `json:"final_serve_pct"`
+}
+
+type RsAdaptivePhase struct {
+	MinFeedback  int64   `json:"min_feedback"`
+	MaxStepPct   float64 `json:"max_step_pct"`
+	IntervalMins int64   `json:"interval_mins"`
 }
 
 type PickerEventEntity struct {

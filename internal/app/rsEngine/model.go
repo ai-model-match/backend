@@ -2,7 +2,6 @@ package rsEngine
 
 import (
 	"encoding/json"
-	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/google/uuid"
@@ -10,22 +9,30 @@ import (
 
 type useCaseModel struct {
 	ID     uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
-	Active *bool     `gorm:"column:active;type:boolean"`
+	Active bool      `gorm:"column:active;type:boolean"`
 }
 
 func (m useCaseModel) TableName() string {
 	return "mm_use_case"
 }
+func (m useCaseModel) toEntity() useCaseEntity {
+	return useCaseEntity(m)
+}
 
 type flowModel struct {
 	ID              uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
 	UseCaseID       uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
-	CurrentServePct *float64  `gorm:"column:current_pct;type:double precision"`
-	UpdatedAt       time.Time `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
+	Active          bool      `gorm:"column:active;type:bool"`
+	Fallback        bool      `gorm:"column:fallback;type:bool"`
+	CurrentServePct float64   `gorm:"column:current_pct;type:double precision"`
 }
 
 func (m flowModel) TableName() string {
 	return "mm_flow"
+}
+
+func (m flowModel) toEntity() flowEntity {
+	return flowEntity(m)
 }
 
 type flowStatisticsModel struct {
@@ -43,15 +50,30 @@ func (m flowStatisticsModel) TableName() string {
 	return "mm_flow_statistics"
 }
 
+func (m flowStatisticsModel) toEntity() flowStatisticsEntity {
+	return flowStatisticsEntity(m)
+}
+
 type rolloutStrategyModel struct {
-	ID            uuid.UUID              `gorm:"primaryKey;column:id;type:varchar(36)"`
-	UseCaseID     uuid.UUID              `gorm:"column:use_case_id;type:varchar(36)"`
-	RolloutState  mm_pubsub.RolloutState `gorm:"column:rollout_state;type:rollout_state"`
-	Configuration json.RawMessage        `gorm:"column:configuration;type:json"`
-	CreatedAt     time.Time              `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
-	UpdatedAt     time.Time              `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
+	ID            uuid.UUID       `gorm:"primaryKey;column:id;type:varchar(36)"`
+	UseCaseID     uuid.UUID       `gorm:"column:use_case_id;type:varchar(36)"`
+	RolloutState  RolloutState    `gorm:"column:rollout_state;type:rollout_state"`
+	Configuration json.RawMessage `gorm:"column:configuration;type:json"`
 }
 
 func (m rolloutStrategyModel) TableName() string {
 	return "mm_rollout_strategy"
+}
+
+func (m rolloutStrategyModel) toEntity() rolloutStrategyEntity {
+	var config mm_pubsub.RSConfiguration
+	if err := json.Unmarshal(m.Configuration, &config); err != nil {
+		return rolloutStrategyEntity{}
+	}
+	return rolloutStrategyEntity{
+		ID:            m.ID,
+		UseCaseID:     m.UseCaseID,
+		RolloutState:  m.RolloutState,
+		Configuration: config,
+	}
 }

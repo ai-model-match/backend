@@ -1,14 +1,15 @@
 package rolloutStrategy
 
 import (
+	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
 
 type rsConfigInputDto struct {
-	Warmup *rsWarmupPhaseDto `json:"warmup"`
-	Escape *rsEscapePhaseDto `json:"escape"`
-	Adapt  rsAdaptPhaseDto   `json:"adapt"`
+	Warmup   *rsWarmupPhaseDto  `json:"warmup"`
+	Escape   *rsEscapePhaseDto  `json:"escape"`
+	Adaptive rsAdaptivePhaseDto `json:"adaptive"`
 }
 
 func (r rsConfigInputDto) validate() error {
@@ -25,8 +26,23 @@ func (r rsConfigInputDto) validate() error {
 			}
 			return value.(*rsEscapePhaseDto).validate()
 		})),
-		validation.Field(&r.Adapt, validation.By(func(value interface{}) error {
-			return value.(rsAdaptPhaseDto).validate()
+		validation.Field(&r.Adaptive, validation.By(func(value interface{}) error {
+			return value.(rsAdaptivePhaseDto).validate()
 		})),
 	)
+}
+
+func (r rsConfigInputDto) toEntity() mm_pubsub.RSConfiguration {
+	a := mm_pubsub.RSConfiguration{
+		Adaptive: r.Adaptive.toEntity(),
+	}
+	if r.Warmup != nil {
+		e := r.Warmup.toEntity()
+		a.Warmup = &e
+	}
+	if r.Escape != nil {
+		e := r.Escape.toEntity()
+		a.Escape = &e
+	}
+	return a
 }
