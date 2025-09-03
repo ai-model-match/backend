@@ -20,17 +20,12 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - An active Flow is considered an available Flow to serve incoming requests.
 - If any Flow is available or any Flow is picked to serve an incoming request, the fallback Flow will be used, even if not active.
 
-### Rollout Strategy Rules
-- The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the next incoming requests.
-- The Rollout Strategy configuration can be updated only in INIT status.
-
 ### Picker Rules
 - You cannot send a request to a not active Use Case.
 - You can send a Correlation ID to ensure the same Flow will serve correlated requests.
 - Correlated requests will count once for statistics on Flows and Rollout Strategy.
 - CorrelationID has a validity period that can be personalize in ENV vars (default 6h), after that time, new request with same CorrelationID will be considered as new.
 - Feedback can be sent based on the CorrelationID, so ensure they are sent within the Correlation validity period.
-
 
 ```mermaid
 flowchart LR
@@ -46,6 +41,27 @@ flowchart LR
     H --> L[Generated Flow Step output]
     I --> L[Generated Flow Step output]
     L --> M[Return Response]
+```
+
+### Rollout Strategy Rules
+- The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the next incoming requests.
+- The Rollout Strategy configuration can be updated only in INIT status.
+- When the Rollout Strategy moved to Warmup status, Flow statistics are cleaned up for the new rollout session.
+
+```mermaid
+flowchart LR
+    INIT -->|start| WARMUP
+    WARMUP --> FORCED_ESCAPED
+    WARMUP --> FORCED_COMPLETED
+    WARMUP -->|automatic| ADAPTIVE
+    ADAPTIVE --> FORCED_ESCAPED
+    ADAPTIVE --> FORCED_COMPLETED
+    ADAPTIVE -->|automatic| ESCAPED
+    ADAPTIVE -->|automatic| COMPLETED
+    ESCAPED --> Back_to_INIT
+    COMPLETED --> Back_to_INIT
+    FORCED_ESCAPED --> Back_to_INIT
+    FORCED_COMPLETED --> Back_to_INIT
 ```
 
 ## Developer Experience

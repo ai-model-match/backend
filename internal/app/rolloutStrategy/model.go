@@ -32,12 +32,3 @@ func (m rolloutStrategyModel) TableName() string {
 func (m rolloutStrategyModel) toEntity() rolloutStrategyEntity {
 	return rolloutStrategyEntity(m)
 }
-
-var allowedTransitions = map[mm_pubsub.RolloutState][]mm_pubsub.RolloutState{
-	mm_pubsub.RolloutStateInit:            {mm_pubsub.RolloutStateWarmup},
-	mm_pubsub.RolloutStateWarmup:          {mm_pubsub.RolloutStateForcedEscaped, mm_pubsub.RolloutStateForcedCompleted},
-	mm_pubsub.RolloutStateAdaptive:        {mm_pubsub.RolloutStateForcedEscaped, mm_pubsub.RolloutStateForcedCompleted},
-	mm_pubsub.RolloutStateCompleted:       {mm_pubsub.RolloutStateInit},
-	mm_pubsub.RolloutStateForcedEscaped:   {mm_pubsub.RolloutStateInit},
-	mm_pubsub.RolloutStateForcedCompleted: {mm_pubsub.RolloutStateInit},
-}

@@ -19,3 +19,13 @@ var AvailableRolloutState = []interface{}{
 	RolloutStateForcedEscaped,
 	RolloutStateForcedCompleted,
 }
+
+var AllowedTransitions = map[RolloutState][]RolloutState{
+	RolloutStateInit:            {RolloutStateWarmup},
+	RolloutStateWarmup:          {RolloutStateForcedEscaped, RolloutStateForcedCompleted},
+	RolloutStateAdaptive:        {RolloutStateForcedEscaped, RolloutStateForcedCompleted},
+	RolloutStateEscaped:         {RolloutStateInit},
+	RolloutStateCompleted:       {RolloutStateInit},
+	RolloutStateForcedEscaped:   {RolloutStateInit},
+	RolloutStateForcedCompleted: {RolloutStateInit},
+}
