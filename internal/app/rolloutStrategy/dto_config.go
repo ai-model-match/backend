@@ -8,7 +8,7 @@ import (
 type rsConfigInputDto struct {
 	Warmup *rsWarmupPhaseDto `json:"warmup"`
 	Escape *rsEscapePhaseDto `json:"escape"`
-	Adapt  *rsAdaptPhaseDto  `json:"adapt"`
+	Adapt  rsAdaptPhaseDto   `json:"adapt"`
 }
 
 func (r rsConfigInputDto) validate() error {
@@ -26,10 +26,7 @@ func (r rsConfigInputDto) validate() error {
 			return value.(*rsEscapePhaseDto).validate()
 		})),
 		validation.Field(&r.Adapt, validation.By(func(value interface{}) error {
-			if mm_utils.IsEmpty(value) {
-				return nil
-			}
-			return value.(*rsAdaptPhaseDto).validate()
+			return value.(rsAdaptPhaseDto).validate()
 		})),
 	)
 }

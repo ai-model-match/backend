@@ -135,6 +135,15 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			} else {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
+			// Now, if we are activating Rollout Strategy (from INIT to WARMUP), but there is no warmup config, move to ADAPT
+			var configuration rsConfigInputDto
+			if err := json.Unmarshal(rolloutStrategy.Configuration, &configuration); err != nil {
+				return err
+			} else {
+				if rolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(configuration.Warmup) {
+					rolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
+				}
+			}
 		}
 		// Check request to change Rollout configuration
 		if input.Configuration != nil {
@@ -142,13 +151,18 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			if rolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
-			// Round decimals on percentages
-			for i := range input.Configuration.Warmup.Goals {
-				input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Warmup.Goals[i].FinalServePct))
+			// Round decimals on percentages for Warmup
+			if !mm_utils.IsEmpty(input.Configuration.Warmup) {
+				for i := range input.Configuration.Warmup.Goals {
+					input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Warmup.Goals[i].FinalServePct))
+				}
 			}
-			for i := range input.Configuration.Escape.Rules {
-				for j := range input.Configuration.Escape.Rules[i].Rollback {
-					input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
+			// Round decimals on percentages for Escape
+			if !mm_utils.IsEmpty(input.Configuration.Escape) {
+				for i := range input.Configuration.Escape.Rules {
+					for j := range input.Configuration.Escape.Rules[i].Rollback {
+						input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2Decimals(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
+					}
 				}
 			}
 			// Finally, convert in JSON
