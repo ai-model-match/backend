@@ -2,22 +2,11 @@ package rsEngine
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/google/uuid"
 )
-
-type useCaseModel struct {
-	ID     uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
-	Active bool      `gorm:"column:active;type:boolean"`
-}
-
-func (m useCaseModel) TableName() string {
-	return "mm_use_case"
-}
-func (m useCaseModel) toEntity() useCaseEntity {
-	return useCaseEntity(m)
-}
 
 type flowModel struct {
 	ID              uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
@@ -25,6 +14,7 @@ type flowModel struct {
 	Active          bool      `gorm:"column:active;type:bool"`
 	Fallback        bool      `gorm:"column:fallback;type:bool"`
 	CurrentServePct float64   `gorm:"column:current_pct;type:double precision"`
+	UpdatedAt       time.Time `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
 }
 
 func (m flowModel) TableName() string {
@@ -55,10 +45,11 @@ func (m flowStatisticsModel) toEntity() flowStatisticsEntity {
 }
 
 type rolloutStrategyModel struct {
-	ID            uuid.UUID       `gorm:"primaryKey;column:id;type:varchar(36)"`
-	UseCaseID     uuid.UUID       `gorm:"column:use_case_id;type:varchar(36)"`
-	RolloutState  RolloutState    `gorm:"column:rollout_state;type:rollout_state"`
-	Configuration json.RawMessage `gorm:"column:configuration;type:json"`
+	ID            uuid.UUID              `gorm:"primaryKey;column:id;type:varchar(36)"`
+	UseCaseID     uuid.UUID              `gorm:"column:use_case_id;type:varchar(36)"`
+	RolloutState  mm_pubsub.RolloutState `gorm:"column:rollout_state;type:rollout_state"`
+	Configuration json.RawMessage        `gorm:"column:configuration;type:json"`
+	UpdatedAt     time.Time              `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
 }
 
 func (m rolloutStrategyModel) TableName() string {
@@ -75,5 +66,14 @@ func (m rolloutStrategyModel) toEntity() rolloutStrategyEntity {
 		UseCaseID:     m.UseCaseID,
 		RolloutState:  m.RolloutState,
 		Configuration: config,
+		UpdatedAt:     m.UpdatedAt,
 	}
+}
+
+func (m *rolloutStrategyModel) fromEntity(e rolloutStrategyEntity) error {
+	// Store only the necessary fields
+	m.ID = e.ID
+	m.RolloutState = e.RolloutState
+	m.UpdatedAt = e.UpdatedAt
+	return nil
 }

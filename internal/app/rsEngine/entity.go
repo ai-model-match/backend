@@ -1,14 +1,11 @@
 package rsEngine
 
 import (
+	"time"
+
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/google/uuid"
 )
-
-type useCaseEntity struct {
-	ID     uuid.UUID `json:"id"`
-	Active bool      `json:"active"`
-}
 
 type flowEntity struct {
 	ID              uuid.UUID `json:"id"`
@@ -16,6 +13,7 @@ type flowEntity struct {
 	Active          bool      `json:"active"`
 	Fallback        bool      `json:"fallback"`
 	CurrentServePct float64   `json:"currentServePct"`
+	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 type flowStatisticsEntity struct {
@@ -29,11 +27,10 @@ type flowStatisticsEntity struct {
 	AvgScore           float64   `json:"avgScore"`
 }
 
-type RolloutState string
-
 type rolloutStrategyEntity struct {
 	ID            uuid.UUID                 `json:"id"`
 	UseCaseID     uuid.UUID                 `json:"useCaseId"`
-	RolloutState  RolloutState              `json:"rolloutState"`
+	RolloutState  mm_pubsub.RolloutState    `json:"rolloutState"`
 	Configuration mm_pubsub.RSConfiguration `json:"configuration"`
+	UpdatedAt     time.Time                 `json:"updatedAt"`
 }

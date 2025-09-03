@@ -84,7 +84,7 @@ func (r rsEscapeRuleDto) toEntity() mm_pubsub.RsEscapeRule {
 		rollbacks = append(rollbacks, rollback.toEntity())
 	}
 	return mm_pubsub.RsEscapeRule{
-		FlowID:      r.FlowID,
+		FlowID:      mm_utils.GetUUIDFromString(r.FlowID),
 		MinFeedback: r.MinFeedback,
 		LowerScore:  *r.LowerScore,
 		Rollback:    rollbacks,
@@ -105,7 +105,7 @@ func (r rsEscapeRollbackDto) validate() error {
 
 func (r rsEscapeRollbackDto) toEntity() mm_pubsub.RsEscapeRollback {
 	return mm_pubsub.RsEscapeRollback{
-		FlowID:        r.FlowID,
+		FlowID:        mm_utils.GetUUIDFromString(r.FlowID),
 		FinalServePct: *r.FinalServePct,
 	}
 }

@@ -74,7 +74,7 @@ func (r rsFlowGoalDto) validate() error {
 
 func (r rsFlowGoalDto) toEntity() mm_pubsub.RsFlowGoal {
 	return mm_pubsub.RsFlowGoal{
-		FlowID:        r.FlowID,
+		FlowID:        mm_utils.GetUUIDFromString(r.FlowID),
 		FinalServePct: *r.FinalServePct,
 	}
 }

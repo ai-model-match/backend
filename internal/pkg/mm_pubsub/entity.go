@@ -89,8 +89,8 @@ type RsWarmupPhase struct {
 }
 
 type RsFlowGoal struct {
-	FlowID        string  `json:"flow_id"`
-	FinalServePct float64 `json:"final_serve_pct"`
+	FlowID        uuid.UUID `json:"flow_id"`
+	FinalServePct float64   `json:"final_serve_pct"`
 }
 
 type RsEscapePhase struct {
@@ -98,15 +98,15 @@ type RsEscapePhase struct {
 }
 
 type RsEscapeRule struct {
-	FlowID      string             `json:"flow_id"`
+	FlowID      uuid.UUID          `json:"flow_id"`
 	MinFeedback int64              `json:"min_feedback"`
 	LowerScore  float64            `json:"lower_score"`
 	Rollback    []RsEscapeRollback `json:"rollback"`
 }
 
 type RsEscapeRollback struct {
-	FlowID        string  `json:"flow_id"`
-	FinalServePct float64 `json:"final_serve_pct"`
+	FlowID        uuid.UUID `json:"flow_id"`
+	FinalServePct float64   `json:"final_serve_pct"`
 }
 
 type RsAdaptivePhase struct {
