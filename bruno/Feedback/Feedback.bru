@@ -1,11 +1,11 @@
 meta {
-  name: Pick
+  name: Feedback
   type: http
   seq: 2
 }
 
 post {
-  url: http://127.0.0.1:8001/api/v1/picker
+  url: http://127.0.0.1:8001/api/v1/feedbacks
   body: json
   auth: apikey
 }
@@ -18,9 +18,9 @@ auth:apikey {
 
 body:json {
   {
-    "useCaseCode": "code-a",
-    "useCaseStepCode": "code-step-1",
-    "correlationId": "2cde489c-272a-4c92-a12f-3bb1e8fa962d"
+    "correlationId": "2cde489c-272a-4c92-a12f-3bb1e8fa962d",
+    "score": 4.9,
+    "comment": "Great answer!"
   }
 }
 

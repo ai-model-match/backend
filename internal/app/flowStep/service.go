@@ -19,7 +19,7 @@ type flowStepServiceInterface interface {
 	getFlowStepByID(ctx *gin.Context, input getFlowStepInputDto) (flowStepEntity, error)
 	updateFlowStep(ctx *gin.Context, input updateFlowStepInputDto) (flowStepEntity, error)
 	createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error
-	cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uuid.UUID) error
+	cloneStepsFromFlow(newFlowID uuid.UUID, clonedFlowID uuid.UUID) error
 }
 
 type flowStepService struct {
@@ -188,7 +188,7 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 	return nil
 }
 
-func (s flowStepService) cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uuid.UUID) error {
+func (s flowStepService) cloneStepsFromFlow(newFlowID uuid.UUID, clonedFlowID uuid.UUID) error {
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		if exists, err := s.repository.checkFlowExists(tx, clonedFlowID); err != nil {
@@ -196,12 +196,12 @@ func (s flowStepService) cloneStepsFromFlow(newFlowId uuid.UUID, clonedFlowID uu
 		} else if !exists {
 			return errFlowNotFound
 		}
-		if exists, err := s.repository.checkFlowExists(tx, newFlowId); err != nil {
+		if exists, err := s.repository.checkFlowExists(tx, newFlowID); err != nil {
 			return mm_err.ErrGeneric
 		} else if !exists {
 			return errFlowNotFound
 		}
-		clonedFlowSteps, err := s.repository.cloneFlowSteps(tx, clonedFlowID, newFlowId)
+		clonedFlowSteps, err := s.repository.cloneFlowSteps(tx, clonedFlowID, newFlowID)
 		if err != nil {
 			return err
 		}

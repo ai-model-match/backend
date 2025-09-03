@@ -34,6 +34,7 @@ const (
 	RolloutStrategyCreatedEvent PubSubEventType = "rollout-strategy.created"
 	RolloutStrategyUpdatedEvent PubSubEventType = "rollout-strategy.updated"
 	PickerMatchedEvent          PubSubEventType = "picker.matched"
+	FeedbackCreatedEvent        PubSubEventType = "feedback.created"
 )
 
 /*
@@ -56,6 +57,7 @@ var eventEntityFactories = map[PubSubEventType]func() any{
 	RolloutStrategyCreatedEvent: func() interface{} { return &RolloutStrategyEventEntity{} },
 	RolloutStrategyUpdatedEvent: func() interface{} { return &RolloutStrategyEventEntity{} },
 	PickerMatchedEvent:          func() interface{} { return &PickerEventEntity{} },
+	FeedbackCreatedEvent:        func() interface{} { return &FeedbackEventEntity{} },
 }
 
 /*

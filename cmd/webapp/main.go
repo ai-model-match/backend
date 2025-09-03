@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ai-model-match/backend/internal/app/auth"
+	"github.com/ai-model-match/backend/internal/app/feedback"
 	"github.com/ai-model-match/backend/internal/app/flow"
 	"github.com/ai-model-match/backend/internal/app/flowStatistics"
 	"github.com/ai-model-match/backend/internal/app/flowStep"
@@ -105,6 +106,7 @@ func main() {
 	flowStepStatistics.Init(envs, dbConnection, pubSubAgent, v1Api)
 	rolloutStrategy.Init(envs, dbConnection, pubSubAgent, v1Api)
 	picker.Init(envs, dbConnection, pubSubAgent, scheduler, v1Api)
+	feedback.Init(envs, dbConnection, pubSubAgent, v1Api)
 
 	// Start the scheduler
 	if err := scheduler.Init(); err != nil {

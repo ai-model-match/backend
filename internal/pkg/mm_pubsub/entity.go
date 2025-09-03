@@ -77,3 +77,13 @@ type PickerEventEntity struct {
 	Placeholders       json.RawMessage `json:"placeholders"`
 	CreatedAt          time.Time       `json:"createdAt"`
 }
+
+type FeedbackEventEntity struct {
+	ID            uuid.UUID `json:"id"`
+	UseCaseID     uuid.UUID `json:"useCaseId"`
+	FlowID        uuid.UUID `json:"flowId"`
+	CorrelationID uuid.UUID `json:"correlationId"`
+	Score         float64   `json:"score"`
+	Comment       string    `json:"comment"`
+	CreatedAt     time.Time `json:"createdAt"`
+}

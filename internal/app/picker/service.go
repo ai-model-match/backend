@@ -64,7 +64,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		useCaseStep = item
 	}
 	// Search a recent correlation by ID
-	if item, err := s.repository.getRecentCorrelationByID(s.storage, mm_utils.GetUUIDFromString(input.CorrelationId)); err != nil {
+	if item, err := s.repository.getRecentCorrelationByID(s.storage, mm_utils.GetUUIDFromString(input.CorrelationID)); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
 	} else if !mm_utils.IsEmpty(item) {
 		if item.UseCaseID != useCase.ID {
@@ -135,7 +135,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		// Now store the correlation for next requests, updating old ones if needed
 		if mm_utils.IsEmpty(correlation) {
 			correlation = pickerCorrelationEntity{
-				ID:        mm_utils.GetUUIDFromString(input.CorrelationId),
+				ID:        mm_utils.GetUUIDFromString(input.CorrelationID),
 				UseCaseID: useCase.ID,
 				FlowID:    selectedFlow.ID,
 				Fallback:  isFallback,
@@ -158,7 +158,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			UseCaseStepID:      useCaseStep.ID,
 			FlowID:             selectedFlow.ID,
 			FlowStepID:         selectedFlowStep.ID,
-			CorrelationID:      mm_utils.GetUUIDFromString(input.CorrelationId),
+			CorrelationID:      mm_utils.GetUUIDFromString(input.CorrelationID),
 			IsFirstCorrelation: &isFirstCorrelation,
 			IsFallback:         &isFallback,
 			InputMessage:       inputMsg,
