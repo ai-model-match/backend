@@ -54,11 +54,10 @@ func main() {
 		envs.DbLogSlowQueryThreshold,
 		envs.AppMode,
 	)
-	// PUB-SUB agent
-	pubSubAgent := mm_pubsub.NewPubSubAgent(envs.PubSubPersistEventsOnDb, envs.PubSubSyncMode)
-
-	// Scheduler (only declaration, not start)
+	// Scheduler
 	scheduler := mm_scheduler.NewScheduler()
+	// PUB-SUB agent
+	pubSubAgent := mm_pubsub.NewPubSubAgent(dbConnection, scheduler, envs.PubSubPersistEventsOnDb, envs.PubSubPersistEventsRetentionDays, envs.PubSubSyncMode)
 
 	// Init modules
 	r := gin.New()

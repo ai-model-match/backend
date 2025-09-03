@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ai-model-match/backend/internal/pkg/mm_scheduler"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -27,6 +28,7 @@ type PubSubAgent struct {
 	quit              chan struct{}
 	closed            bool
 	persistEventsOnDb bool
+	pubSubScheduler   *pubsubScheduler
 	syncMode          bool
 }
 
@@ -38,13 +40,20 @@ type EventToPublish struct {
 /*
 NewPubSubAgent initialies a new pub-sub Agent.
 */
-func NewPubSubAgent(persistEventsOnDb bool, syncMode bool) *PubSubAgent {
-	zap.L().Info("Start creatimg PubSub agent...", zap.String("service", "pub-sub"))
+func NewPubSubAgent(dbStorage *gorm.DB, scheduler *mm_scheduler.Scheduler, persistEventsOnDb bool, persistRetentionDays int, syncMode bool) *PubSubAgent {
+	zap.L().Info("Start creating PubSub agent...", zap.String("service", "pub-sub"))
+	var pubSubScheduler *pubsubScheduler = nil
+	if persistEventsOnDb && persistRetentionDays > 0 {
+		ps := newPubsubScheduler(dbStorage, scheduler, persistRetentionDays)
+		pubSubScheduler = &ps
+		pubSubScheduler.init()
+	}
 	pubsub := &PubSubAgent{
 		subs:              make(map[string][]chan PubSubMessage),
 		quit:              make(chan struct{}),
 		persistEventsOnDb: persistEventsOnDb,
 		syncMode:          syncMode,
+		pubSubScheduler:   pubSubScheduler,
 	}
 	zap.L().Info("PubSub agent created!", zap.String("service", "pub-sub"))
 	return pubsub

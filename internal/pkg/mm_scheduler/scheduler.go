@@ -17,7 +17,7 @@ type Scheduler struct {
 NewScheduler initialies a new scheduler service.
 */
 func NewScheduler() *Scheduler {
-	zap.L().Info("Start creatimg new Scheduler service...", zap.String("service", "scheduler"))
+	zap.L().Info("Start creating new Scheduler service...", zap.String("service", "scheduler"))
 	scheduler, _ := gocron.NewScheduler()
 	zap.L().Info("Scheduler service created!", zap.String("service", "scheduler"))
 	return &Scheduler{

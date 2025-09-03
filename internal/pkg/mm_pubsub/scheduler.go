@@ -1,4 +1,4 @@
-package auth
+package mm_pubsub
 
 import (
 	"github.com/ai-model-match/backend/internal/pkg/mm_scheduler"
@@ -6,33 +6,29 @@ import (
 	"gorm.io/gorm"
 )
 
-type authSchedulerInterface interface {
-	init()
+type pubsubScheduler struct {
+	scheduler            *mm_scheduler.Scheduler
+	storage              *gorm.DB
+	persistRetentionDays int
 }
 
-type authScheduler struct {
-	scheduler  *mm_scheduler.Scheduler
-	storage    *gorm.DB
-	repository authRepositoryInterface
-}
-
-func newAuthScheduler(storage *gorm.DB, scheduler *mm_scheduler.Scheduler, repository authRepositoryInterface) authScheduler {
-	return authScheduler{
-		scheduler:  scheduler,
-		storage:    storage,
-		repository: repository,
+func newPubsubScheduler(storage *gorm.DB, scheduler *mm_scheduler.Scheduler, persistRetentionDays int) pubsubScheduler {
+	return pubsubScheduler{
+		scheduler:            scheduler,
+		storage:              storage,
+		persistRetentionDays: persistRetentionDays,
 	}
 }
 
-func (s authScheduler) init() {
+func (s pubsubScheduler) init() {
 	// Declare all jobs to be scheduled
 	var jobsToSchedule []mm_scheduler.ScheduledJob = []mm_scheduler.ScheduledJob{
 		{
-			Schedule: "10 * * * *", // Every hour at HH:10
-			Handler:  s.cleanUpExpiredRefreshToken,
+			Schedule: "0 * * * *", // Every hour at HH:00
+			Handler:  s.cleanUpOldPubSubEvents,
 			Parameters: mm_scheduler.ScheduledJobParameter{
-				JobID: 29347129,
-				Title: "CleanUpExpiredRefreshToken",
+				JobID: 83701937,
+				Title: "CleanUpOldPubSubEvents",
 			},
 		},
 	}
@@ -50,11 +46,13 @@ func (s authScheduler) init() {
 /*
 Scheduled function to run. It cleanup expired refresh tokens
 */
-func (s authScheduler) cleanUpExpiredRefreshToken(p mm_scheduler.ScheduledJobParameter) error {
+func (s pubsubScheduler) cleanUpOldPubSubEvents(p mm_scheduler.ScheduledJobParameter) error {
+	retentionInDays := s.persistRetentionDays
 	// If this istance acquires the lock, executre the business logic
 	if lockAcquired := s.scheduler.AcquireLock(s.storage, p.JobID); lockAcquired {
 		zap.L().Info("Starting Cron Job...", zap.String("job", p.Title))
-		if err := s.repository.cleanUpExpiredRefreshToken(s.storage); err != nil {
+		// Delete all old events based on retention policy
+		if err := s.storage.Where("event_date < NOW() - (? * INTERVAL '1 day')", retentionInDays).Delete(&eventModel{}).Error; err != nil {
 			zap.L().Error("Cron Job Failed", zap.String("job", p.Title), zap.Error(err))
 			return err
 		}

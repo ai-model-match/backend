@@ -16,30 +16,31 @@ It is possible to set each variable as mandatory as input or optional, in which 
 to define a default value.
 */
 type Envs struct {
-	DbHost                      string
-	DbPort                      int
-	DbUsername                  string
-	DbPassword                  string
-	DbName                      string
-	DbSslMode                   string
-	DbLogSlowQueryThreshold     int
-	AppPort                     int
-	AppMode                     string
-	AppCorsOrigin               string
-	SearchRelevanceThreshold    float64
-	PubSubPersistEventsOnDb     bool
-	PubSubSyncMode              bool
-	AuthUserReadOnlyUsername    string
-	AuthUserReadOnlyPassword    string
-	AuthUserReadWriteUsername   string
-	AuthUserReadWritePassword   string
-	AuthJwtSecret               string
-	AuthJwtAccessTokenDuration  int
-	AuthJwtRefreshTokenDuration int
-	AuthApiKeyReadOnly          string
-	AuthApiKeyReadWrite         string
-	AuthApiKeyReadOnlyUsername  string
-	AuthApiKeyReadWriteUsername string
+	DbHost                           string
+	DbPort                           int
+	DbUsername                       string
+	DbPassword                       string
+	DbName                           string
+	DbSslMode                        string
+	DbLogSlowQueryThreshold          int
+	AppPort                          int
+	AppMode                          string
+	AppCorsOrigin                    string
+	SearchRelevanceThreshold         float64
+	PubSubPersistEventsOnDb          bool
+	PubSubPersistEventsRetentionDays int
+	PubSubSyncMode                   bool
+	AuthUserReadOnlyUsername         string
+	AuthUserReadOnlyPassword         string
+	AuthUserReadWriteUsername        string
+	AuthUserReadWritePassword        string
+	AuthJwtSecret                    string
+	AuthJwtAccessTokenDuration       int
+	AuthJwtRefreshTokenDuration      int
+	AuthApiKeyReadOnly               string
+	AuthApiKeyReadWrite              string
+	AuthApiKeyReadOnlyUsername       string
+	AuthApiKeyReadWriteUsername      string
 }
 
 /*
@@ -48,30 +49,31 @@ ReadEnvs function reads all the Env Variables.
 func ReadEnvs() *Envs {
 	godotenv.Load()
 	envs := Envs{
-		DbHost:                      getMandatoryStringValue("DB_HOST"),
-		DbPort:                      getMandatoryIntValue("DB_PORT"),
-		DbUsername:                  getMandatoryStringValue("DB_USERNAME"),
-		DbPassword:                  getMandatoryStringValue("DB_PASSWORD"),
-		DbName:                      getMandatoryStringValue("DB_NAME"),
-		DbSslMode:                   getMandatoryStringValue("DB_SSL_MODE"),
-		DbLogSlowQueryThreshold:     getMandatoryIntValue("DB_LOG_SLOW_QUERY_THRESHOLD"),
-		AppPort:                     getMandatoryIntValue("APP_PORT"),
-		AppMode:                     getMandatoryStringValue("APP_MODE"),
-		AppCorsOrigin:               getMandatoryStringValue("APP_CORS_ORIGIN"),
-		SearchRelevanceThreshold:    getMandatoryFloatValue("SEARCH_RELEVANCE_THRESHOLD"),
-		PubSubPersistEventsOnDb:     getMandatoryBooleanValue("PUBSUB_PERSIST_EVENTS_ON_DB"),
-		PubSubSyncMode:              getMandatoryBooleanValue("PUBSUB_SYNC_MODE"),
-		AuthUserReadOnlyUsername:    getMandatoryStringValue("AUTH_USER_READ_ONLY_USERNAME"),
-		AuthUserReadOnlyPassword:    getMandatoryStringValue("AUTH_USER_READ_ONLY_PASSWORD"),
-		AuthUserReadWriteUsername:   getMandatoryStringValue("AUTH_USER_READ_WRITE_USERNAME"),
-		AuthUserReadWritePassword:   getMandatoryStringValue("AUTH_USER_READ_WRITE_PASSWORD"),
-		AuthJwtSecret:               getMandatoryStringValue("AUTH_JWT_SECRET"),
-		AuthJwtAccessTokenDuration:  getMandatoryIntValue("AUTH_JWT_ACCESS_TOKEN_DURATION"),
-		AuthJwtRefreshTokenDuration: getMandatoryIntValue("AUTH_JWT_REFRESH_TOKEN_DURATION"),
-		AuthApiKeyReadOnly:          getMandatoryStringValue("AUTH_API_KEY_READ_ONLY"),
-		AuthApiKeyReadWrite:         getMandatoryStringValue("AUTH_API_KEY_READ_WRITE"),
-		AuthApiKeyReadOnlyUsername:  getMandatoryStringValue("AUTH_API_KEY_READ_ONLY_USERNAME"),
-		AuthApiKeyReadWriteUsername: getMandatoryStringValue("AUTH_API_KEY_READ_WRITE_USERNAME"),
+		DbHost:                           getMandatoryStringValue("DB_HOST"),
+		DbPort:                           getMandatoryIntValue("DB_PORT"),
+		DbUsername:                       getMandatoryStringValue("DB_USERNAME"),
+		DbPassword:                       getMandatoryStringValue("DB_PASSWORD"),
+		DbName:                           getMandatoryStringValue("DB_NAME"),
+		DbSslMode:                        getMandatoryStringValue("DB_SSL_MODE"),
+		DbLogSlowQueryThreshold:          getMandatoryIntValue("DB_LOG_SLOW_QUERY_THRESHOLD"),
+		AppPort:                          getMandatoryIntValue("APP_PORT"),
+		AppMode:                          getMandatoryStringValue("APP_MODE"),
+		AppCorsOrigin:                    getMandatoryStringValue("APP_CORS_ORIGIN"),
+		SearchRelevanceThreshold:         getMandatoryFloatValue("SEARCH_RELEVANCE_THRESHOLD"),
+		PubSubPersistEventsOnDb:          getMandatoryBooleanValue("PUBSUB_PERSIST_EVENTS_ON_DB"),
+		PubSubPersistEventsRetentionDays: getMandatoryIntValue("PUBSUB_PERSIST_EVENTS_RETENTION_DAYS"),
+		PubSubSyncMode:                   getMandatoryBooleanValue("PUBSUB_SYNC_MODE"),
+		AuthUserReadOnlyUsername:         getMandatoryStringValue("AUTH_USER_READ_ONLY_USERNAME"),
+		AuthUserReadOnlyPassword:         getMandatoryStringValue("AUTH_USER_READ_ONLY_PASSWORD"),
+		AuthUserReadWriteUsername:        getMandatoryStringValue("AUTH_USER_READ_WRITE_USERNAME"),
+		AuthUserReadWritePassword:        getMandatoryStringValue("AUTH_USER_READ_WRITE_PASSWORD"),
+		AuthJwtSecret:                    getMandatoryStringValue("AUTH_JWT_SECRET"),
+		AuthJwtAccessTokenDuration:       getMandatoryIntValue("AUTH_JWT_ACCESS_TOKEN_DURATION"),
+		AuthJwtRefreshTokenDuration:      getMandatoryIntValue("AUTH_JWT_REFRESH_TOKEN_DURATION"),
+		AuthApiKeyReadOnly:               getMandatoryStringValue("AUTH_API_KEY_READ_ONLY"),
+		AuthApiKeyReadWrite:              getMandatoryStringValue("AUTH_API_KEY_READ_WRITE"),
+		AuthApiKeyReadOnlyUsername:       getMandatoryStringValue("AUTH_API_KEY_READ_ONLY_USERNAME"),
+		AuthApiKeyReadWriteUsername:      getMandatoryStringValue("AUTH_API_KEY_READ_WRITE_USERNAME"),
 	}
 
 	return &envs
