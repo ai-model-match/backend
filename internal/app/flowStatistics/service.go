@@ -15,7 +15,8 @@ import (
 type flowStatisticsServiceInterface interface {
 	getFlowStatisticsByID(ctx *gin.Context, input getFlowStatisticsInputDto) (flowStatisticsEntity, error)
 	createFlowStatistics(flowID uuid.UUID) (flowStatisticsEntity, error)
-	updateStatistics(event mm_pubsub.PickerEventEntity) error
+	updateRequestStatistics(event mm_pubsub.PickerEventEntity) error
+	updateFeedbackStatistics(event mm_pubsub.FeedbackEventEntity) error
 	cleanupStatistics(event mm_pubsub.RolloutStrategyEventEntity) error
 }
 
@@ -89,7 +90,7 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 	return flowStatistics, nil
 }
 
-func (s flowStatisticsService) updateStatistics(event mm_pubsub.PickerEventEntity) error {
+func (s flowStatisticsService) updateRequestStatistics(event mm_pubsub.PickerEventEntity) error {
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Find the flow statistics
 		item, err := s.repository.getFlowStatisticsByFlowID(tx, event.FlowID, true)
@@ -104,6 +105,32 @@ func (s flowStatisticsService) updateStatistics(event mm_pubsub.PickerEventEntit
 		if *event.IsFirstCorrelation {
 			*item.TotSessionRequests++
 		}
+		// And save
+		if _, err := s.repository.saveFlowStatistics(tx, item, mm_db.Update); err != nil {
+			return err
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return errTransaction
+	}
+	return nil
+}
+
+func (s flowStatisticsService) updateFeedbackStatistics(event mm_pubsub.FeedbackEventEntity) error {
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		// Find the flow statistics
+		item, err := s.repository.getFlowStatisticsByFlowID(tx, event.FlowID, true)
+		if err != nil {
+			return mm_err.ErrGeneric
+		}
+		if mm_utils.IsEmpty(item) {
+			return errFlowStatisticsNotFound
+		}
+		// Update statistics
+		*item.TotFeedback++
+		newAvg := ((*item.AvgScore * float64(*item.TotFeedback-1)) + event.Score) / float64(*item.TotFeedback)
+		item.AvgScore = mm_utils.RoundTo2Decimals(&newAvg)
 		// And save
 		if _, err := s.repository.saveFlowStatistics(tx, item, mm_db.Update); err != nil {
 			return err

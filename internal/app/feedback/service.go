@@ -47,7 +47,7 @@ func (s feedbackService) createFeedback(ctx *gin.Context, input createFeedbackIn
 			CorrelationID: correlation.ID,
 			UseCaseID:     correlation.UseCaseID,
 			FlowID:        correlation.FlowID,
-			Score:         input.Score,
+			Score:         *mm_utils.RoundTo2Decimals(&input.Score),
 			Comment:       input.Comment,
 			CreatedAt:     now,
 		}

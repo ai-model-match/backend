@@ -100,9 +100,49 @@ func (r flowStatisticsConsumer) subscribe() {
 					return
 				}
 				event := msg.Message.EventEntity.(*mm_pubsub.PickerEventEntity)
-				// Create the Flow Statistics
-				if err := r.service.updateStatistics(*event); err != nil {
-					zap.L().Error("Impossible to update Flow statistics", zap.String("service", "flow-statistics-consumer"))
+				// Update Flow Statistics
+				if err := r.service.updateRequestStatistics(*event); err != nil {
+					zap.L().Error("Impossible to update requests Flow statistics", zap.String("service", "flow-statistics-consumer"))
+					return
+				}
+			}()
+		}
+	}()
+
+	go func() {
+		messageChannel := r.pubSub.Subscribe(mm_pubsub.TopicFeedbackV1)
+		isChannelOpen := true
+		for isChannelOpen {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						mm_log.LogPanicError(r, "flow-statistics-consumer", "Panic occurred in handling a new message")
+					}
+				}()
+				msg, channelOpen := <-messageChannel
+				if !channelOpen {
+					isChannelOpen = false
+					zap.L().Info(
+						"Channel closed. No more events to listen... quit!",
+						zap.String("service", "flow-statistics-consumer"),
+					)
+					return
+				}
+				// ACK message
+				defer msg.Message.EventState.Done()
+				zap.L().Info(
+					"Received Event Message",
+					zap.String("service", "flow-statistics-consumer"),
+					zap.String("event-id", msg.Message.EventID.String()),
+					zap.String("event-type", string(msg.Message.EventType)),
+				)
+				if msg.Message.EventType != mm_pubsub.FeedbackCreatedEvent {
+					return
+				}
+				event := msg.Message.EventEntity.(*mm_pubsub.FeedbackEventEntity)
+				// Update Flow Statistics
+				if err := r.service.updateFeedbackStatistics(*event); err != nil {
+					zap.L().Error("Impossible to update feedback Flow statistics", zap.String("service", "flow-statistics-consumer"))
 					return
 				}
 			}()
