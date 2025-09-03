@@ -28,7 +28,7 @@ func (s pickerScheduler) init() {
 	// Declare all jobs to be scheduled
 	var jobsToSchedule []mm_scheduler.ScheduledJob = []mm_scheduler.ScheduledJob{
 		{
-			Schedule: "5 * * * *", // Every hour at HH:05
+			Schedule: "0,10,20,30,40,50 * * * *", // Every 10 minutes of the hour
 			Handler:  s.cleanUpExpiredPickerCorrelations,
 			Parameters: mm_scheduler.ScheduledJobParameter{
 				JobID: 14387371,
@@ -44,7 +44,6 @@ func (s pickerScheduler) init() {
 			Parameters: jobToSchedule.Parameters,
 		})
 	}
-
 }
 
 /*

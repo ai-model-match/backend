@@ -19,7 +19,7 @@ func Init(envs *mm_env.Envs, dbStorage *gorm.DB, pubSubAgent *mm_pubsub.PubSubAg
 	var scheduler pickerSchedulerInterface
 	var router pickerRouterInterface
 
-	repository = newPickerRepository()
+	repository = newPickerRepository(envs.PickerCorrelationValidityHours)
 	service = newPickerService(dbStorage, pubSubAgent, repository)
 	scheduler = newPickerScheduler(dbStorage, cron, repository)
 	scheduler.init()

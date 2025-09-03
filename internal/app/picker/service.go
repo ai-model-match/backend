@@ -63,7 +63,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	} else {
 		useCaseStep = item
 	}
-	// Search a recent correlation by ID (in the last 24 hours)
+	// Search a recent correlation by ID
 	if item, err := s.repository.getRecentCorrelationByID(s.storage, mm_utils.GetUUIDFromString(input.CorrelationId)); err != nil {
 		return pickerEntity{}, mm_err.ErrGeneric
 	} else if !mm_utils.IsEmpty(item) {

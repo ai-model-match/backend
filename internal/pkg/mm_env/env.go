@@ -30,6 +30,7 @@ type Envs struct {
 	PubSubPersistEventsOnDb          bool
 	PubSubPersistEventsRetentionDays int
 	PubSubSyncMode                   bool
+	PickerCorrelationValidityHours   int
 	AuthUserReadOnlyUsername         string
 	AuthUserReadOnlyPassword         string
 	AuthUserReadWriteUsername        string
@@ -63,6 +64,7 @@ func ReadEnvs() *Envs {
 		PubSubPersistEventsOnDb:          getMandatoryBooleanValue("PUBSUB_PERSIST_EVENTS_ON_DB"),
 		PubSubPersistEventsRetentionDays: getMandatoryIntValue("PUBSUB_PERSIST_EVENTS_RETENTION_DAYS"),
 		PubSubSyncMode:                   getMandatoryBooleanValue("PUBSUB_SYNC_MODE"),
+		PickerCorrelationValidityHours:   getMandatoryIntValue("PICKER_CORRELATION_VALIDITY_HOURS"),
 		AuthUserReadOnlyUsername:         getMandatoryStringValue("AUTH_USER_READ_ONLY_USERNAME"),
 		AuthUserReadOnlyPassword:         getMandatoryStringValue("AUTH_USER_READ_ONLY_PASSWORD"),
 		AuthUserReadWriteUsername:        getMandatoryStringValue("AUTH_USER_READ_WRITE_USERNAME"),

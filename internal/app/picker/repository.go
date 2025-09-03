@@ -21,10 +21,13 @@ type pickerRepositoryInterface interface {
 }
 
 type pickerRepository struct {
+	correlationValidityInHours int
 }
 
-func newPickerRepository() pickerRepository {
-	return pickerRepository{}
+func newPickerRepository(correlationValidityInHours int) pickerRepository {
+	return pickerRepository{
+		correlationValidityInHours: correlationValidityInHours,
+	}
 }
 
 func (r pickerRepository) getUseCaseByCode(tx *gorm.DB, code string) (useCaseEntity, error) {
@@ -55,7 +58,7 @@ func (r pickerRepository) getUseCaseStepByCode(tx *gorm.DB, useCaseID uuid.UUID,
 
 func (r pickerRepository) getRecentCorrelationByID(tx *gorm.DB, correlationID uuid.UUID) (pickerCorrelationEntity, error) {
 	var model *pickerCorrelationModel
-	query := tx.Where("id = ?", correlationID).Where("created_at >= NOW() - INTERVAL '24 hours'")
+	query := tx.Where("id = ?", correlationID).Where("created_at >=NOW() - (? * INTERVAL '1 hour')", r.correlationValidityInHours)
 	result := query.Limit(1).Find(&model)
 	if result.Error != nil {
 		return pickerCorrelationEntity{}, result.Error
@@ -144,5 +147,5 @@ func (r pickerRepository) savePickerEntity(tx *gorm.DB, entity pickerEntity, ope
 }
 
 func (r pickerRepository) cleanUpExpiredPickerCorrelations(tx *gorm.DB) error {
-	return tx.Where("created_at < NOW() - INTERVAL '24 hours'").Delete(&pickerCorrelationModel{}).Error
+	return tx.Where("created_at < NOW() - (? * INTERVAL '1 hour')", r.correlationValidityInHours).Delete(&pickerCorrelationModel{}).Error
 }
