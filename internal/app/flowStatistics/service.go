@@ -48,7 +48,7 @@ func (s flowStatisticsService) getFlowStatisticsByID(ctx *gin.Context, input get
 
 func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStatisticsEntity, error) {
 	now := time.Now()
-	var flowStatistics flowStatisticsEntity
+	var newFlowStatistics flowStatisticsEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Retrieve the Flow and check if exists
@@ -68,7 +68,7 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 			return errFlowStatisticsAlreadyExists
 		}
 		// Create the new Flow Statistics with default values and store it
-		flowStatistics = flowStatisticsEntity{
+		newFlowStatistics = flowStatisticsEntity{
 			ID:                 uuid.New(),
 			FlowID:             flow.ID,
 			UseCaseID:          flow.UseCaseID,
@@ -79,7 +79,7 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 			CreatedAt:          now,
 			UpdatedAt:          now,
 		}
-		if _, err := s.repository.saveFlowStatistics(tx, flowStatistics, mm_db.Create); err != nil {
+		if _, err := s.repository.saveFlowStatistics(tx, newFlowStatistics, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Persist event
@@ -89,16 +89,17 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowStatisticsCreatedEvent,
 				EventEntity: &mm_pubsub.FlowStatisticsEventEntity{
-					ID:                 flowStatistics.ID,
-					FlowID:             flowStatistics.FlowID,
-					UseCaseID:          flowStatistics.UseCaseID,
-					TotRequests:        flowStatistics.TotRequests,
-					TotSessionRequests: flowStatistics.TotSessionRequests,
-					TotFeedback:        flowStatistics.TotFeedback,
-					AvgScore:           flowStatistics.AvgScore,
-					CreatedAt:          flowStatistics.CreatedAt,
-					UpdatedAt:          flowStatistics.UpdatedAt,
+					ID:                 newFlowStatistics.ID,
+					FlowID:             newFlowStatistics.FlowID,
+					UseCaseID:          newFlowStatistics.UseCaseID,
+					TotRequests:        newFlowStatistics.TotRequests,
+					TotSessionRequests: newFlowStatistics.TotSessionRequests,
+					TotFeedback:        newFlowStatistics.TotFeedback,
+					AvgScore:           newFlowStatistics.AvgScore,
+					CreatedAt:          newFlowStatistics.CreatedAt,
+					UpdatedAt:          newFlowStatistics.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(flowStatisticsEntity{}, newFlowStatistics),
 			},
 		}); err != nil {
 			return err
@@ -112,27 +113,29 @@ func (s flowStatisticsService) createFlowStatistics(flowID uuid.UUID) (flowStati
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return flowStatistics, nil
+	return newFlowStatistics, nil
 }
 
 func (s flowStatisticsService) updateRequestStatistics(event mm_pubsub.PickerEventEntity) error {
 	eventsToPublish := []mm_pubsub.EventToPublish{}
+	var updatedFlowStatistics flowStatisticsEntity
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Find the flow statistics
-		item, err := s.repository.getFlowStatisticsByFlowID(tx, event.FlowID, true)
+		currentFlowStatistics, err := s.repository.getFlowStatisticsByFlowID(tx, event.FlowID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentFlowStatistics) {
 			return errFlowStatisticsNotFound
 		}
 		// Update statistics
-		item.TotRequests++
+		updatedFlowStatistics = currentFlowStatistics
+		updatedFlowStatistics.TotRequests++
 		if *event.IsFirstCorrelation {
-			item.TotSessionRequests++
+			updatedFlowStatistics.TotSessionRequests++
 		}
 		// And save
-		if _, err := s.repository.saveFlowStatistics(tx, item, mm_db.Update); err != nil {
+		if _, err := s.repository.saveFlowStatistics(tx, updatedFlowStatistics, mm_db.Update); err != nil {
 			return err
 		}
 		// Persist event
@@ -142,16 +145,17 @@ func (s flowStatisticsService) updateRequestStatistics(event mm_pubsub.PickerEve
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowStatisticsUpdatedEvent,
 				EventEntity: &mm_pubsub.FlowStatisticsEventEntity{
-					ID:                 item.ID,
-					FlowID:             item.FlowID,
-					UseCaseID:          item.UseCaseID,
-					TotRequests:        item.TotRequests,
-					TotSessionRequests: item.TotSessionRequests,
-					TotFeedback:        item.TotFeedback,
-					AvgScore:           item.AvgScore,
-					CreatedAt:          item.CreatedAt,
-					UpdatedAt:          item.UpdatedAt,
+					ID:                 updatedFlowStatistics.ID,
+					FlowID:             updatedFlowStatistics.FlowID,
+					UseCaseID:          updatedFlowStatistics.UseCaseID,
+					TotRequests:        updatedFlowStatistics.TotRequests,
+					TotSessionRequests: updatedFlowStatistics.TotSessionRequests,
+					TotFeedback:        updatedFlowStatistics.TotFeedback,
+					AvgScore:           updatedFlowStatistics.AvgScore,
+					CreatedAt:          updatedFlowStatistics.CreatedAt,
+					UpdatedAt:          updatedFlowStatistics.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentFlowStatistics, updatedFlowStatistics),
 			},
 		}); err != nil {
 			return err
@@ -170,21 +174,23 @@ func (s flowStatisticsService) updateRequestStatistics(event mm_pubsub.PickerEve
 
 func (s flowStatisticsService) updateFeedbackStatistics(event mm_pubsub.FeedbackEventEntity) error {
 	eventsToPublish := []mm_pubsub.EventToPublish{}
+	var updatedFlowStatistics flowStatisticsEntity
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Find the flow statistics
-		item, err := s.repository.getFlowStatisticsByFlowID(tx, event.FlowID, true)
+		currentFlowStatistics, err := s.repository.getFlowStatisticsByFlowID(tx, event.FlowID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentFlowStatistics) {
 			return errFlowStatisticsNotFound
 		}
 		// Update statistics
-		item.TotFeedback++
-		newAvg := ((item.AvgScore * float64(item.TotFeedback-1)) + event.Score) / float64(item.TotFeedback)
-		item.AvgScore = *mm_utils.RoundTo2DecimalsPtr(&newAvg)
+		updatedFlowStatistics = currentFlowStatistics
+		updatedFlowStatistics.TotFeedback++
+		newAvg := ((updatedFlowStatistics.AvgScore * float64(updatedFlowStatistics.TotFeedback-1)) + event.Score) / float64(updatedFlowStatistics.TotFeedback)
+		updatedFlowStatistics.AvgScore = *mm_utils.RoundTo2DecimalsPtr(&newAvg)
 		// And save
-		if _, err := s.repository.saveFlowStatistics(tx, item, mm_db.Update); err != nil {
+		if _, err := s.repository.saveFlowStatistics(tx, updatedFlowStatistics, mm_db.Update); err != nil {
 			return err
 		}
 		// Persist event
@@ -194,16 +200,17 @@ func (s flowStatisticsService) updateFeedbackStatistics(event mm_pubsub.Feedback
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowStatisticsUpdatedEvent,
 				EventEntity: &mm_pubsub.FlowStatisticsEventEntity{
-					ID:                 item.ID,
-					FlowID:             item.FlowID,
-					UseCaseID:          item.UseCaseID,
-					TotRequests:        item.TotRequests,
-					TotSessionRequests: item.TotSessionRequests,
-					TotFeedback:        item.TotFeedback,
-					AvgScore:           item.AvgScore,
-					CreatedAt:          item.CreatedAt,
-					UpdatedAt:          item.UpdatedAt,
+					ID:                 updatedFlowStatistics.ID,
+					FlowID:             updatedFlowStatistics.FlowID,
+					UseCaseID:          updatedFlowStatistics.UseCaseID,
+					TotRequests:        updatedFlowStatistics.TotRequests,
+					TotSessionRequests: updatedFlowStatistics.TotSessionRequests,
+					TotFeedback:        updatedFlowStatistics.TotFeedback,
+					AvgScore:           updatedFlowStatistics.AvgScore,
+					CreatedAt:          updatedFlowStatistics.CreatedAt,
+					UpdatedAt:          updatedFlowStatistics.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentFlowStatistics, updatedFlowStatistics),
 			},
 		}); err != nil {
 			return err
@@ -221,5 +228,6 @@ func (s flowStatisticsService) updateFeedbackStatistics(event mm_pubsub.Feedback
 }
 
 func (s flowStatisticsService) cleanupStatistics(event mm_pubsub.RolloutStrategyEventEntity) error {
+	// If needed, send a new cleanup event for each Flow Statistics impacted
 	return s.repository.cleanupFlowStatisticsByUseCaseId(s.storage, event.UseCaseID)
 }
