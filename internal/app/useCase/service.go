@@ -57,7 +57,7 @@ func (s useCaseService) getUseCaseByID(ctx *gin.Context, input getUseCaseInputDt
 
 func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInputDto) (useCaseEntity, error) {
 	now := time.Now()
-	useCase := useCaseEntity{
+	newUseCase := useCaseEntity{
 		ID:          uuid.New(),
 		Title:       input.Title,
 		Code:        input.Code,
@@ -68,14 +68,14 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 	}
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		item, err := s.repository.getUseCaseByCode(tx, input.Code, false)
+		useCaseSameCode, err := s.repository.getUseCaseByCode(tx, input.Code, false)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if !mm_utils.IsEmpty(item) {
+		if !mm_utils.IsEmpty(useCaseSameCode) {
 			return errUseCaseSameCodeAlreadyExists
 		}
-		_, err = s.repository.saveUseCase(tx, useCase, mm_db.Create)
+		_, err = s.repository.saveUseCase(tx, newUseCase, mm_db.Create)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
@@ -85,14 +85,15 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 				EventTime: time.Now(),
 				EventType: mm_pubsub.UseCaseCreatedEvent,
 				EventEntity: &mm_pubsub.UseCaseEventEntity{
-					ID:          useCase.ID,
-					Title:       useCase.Title,
-					Code:        useCase.Code,
-					Description: useCase.Description,
-					Active:      useCase.Active,
-					CreatedAt:   useCase.CreatedAt,
-					UpdatedAt:   useCase.UpdatedAt,
+					ID:          newUseCase.ID,
+					Title:       newUseCase.Title,
+					Code:        newUseCase.Code,
+					Description: newUseCase.Description,
+					Active:      newUseCase.Active,
+					CreatedAt:   newUseCase.CreatedAt,
+					UpdatedAt:   newUseCase.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(useCaseEntity{}, newUseCase),
 			},
 		}); err != nil {
 			return err
@@ -106,21 +107,21 @@ func (s useCaseService) createUseCase(ctx *gin.Context, input createUseCaseInput
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return useCase, nil
+	return newUseCase, nil
 }
 
 func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInputDto) (useCaseEntity, error) {
 	now := time.Now()
-	var useCase useCaseEntity
+	var updatedUseCase useCaseEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseId := uuid.MustParse(input.ID)
-		item, err := s.repository.getUseCaseByID(tx, useCaseId, true)
+		currentUseCase, err := s.repository.getUseCaseByID(tx, useCaseId, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentUseCase) {
 			return errUseCaseNotFound
 		}
 		// If the input contains a new code for the use case, check for collision
@@ -133,26 +134,26 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 				return errUseCaseSameCodeAlreadyExists
 			}
 			// Avoid changing code if the use case is active
-			if *input.Code != item.Code && *item.Active {
+			if *input.Code != currentUseCase.Code && *currentUseCase.Active {
 				return errUseCaseCodeChangeNotAllowedWhileActive
 			}
 		}
 		// Update useCase information based on inputs
-		useCase = item
-		useCase.UpdatedAt = now
+		updatedUseCase = currentUseCase
+		updatedUseCase.UpdatedAt = now
 		if input.Title != nil {
-			useCase.Title = *input.Title
+			updatedUseCase.Title = *input.Title
 		}
 		if input.Description != nil {
-			useCase.Description = *input.Description
+			updatedUseCase.Description = *input.Description
 		}
 		if input.Code != nil {
-			useCase.Code = *input.Code
+			updatedUseCase.Code = *input.Code
 		}
 		if input.Active != nil {
 			// Avoid activating Use Case if there isn't any Fallback Flow
-			if !*useCase.Active && *input.Active {
-				fallbackExists, err := s.repository.checkFallbackFlowExists(tx, useCase.ID)
+			if !*updatedUseCase.Active && *input.Active {
+				fallbackExists, err := s.repository.checkFallbackFlowExists(tx, updatedUseCase.ID)
 				if err != nil {
 					return mm_err.ErrGeneric
 				}
@@ -160,12 +161,13 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 					return errUseCaseCannotBeActivatedWithoutFallbackFlow
 				}
 			}
-			useCase.Active = input.Active
+			updatedUseCase.Active = input.Active
 		}
-		_, err = s.repository.saveUseCase(tx, useCase, mm_db.Update)
+		_, err = s.repository.saveUseCase(tx, updatedUseCase, mm_db.Update)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
+
 		// Send an event of useCase updated
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
@@ -173,14 +175,15 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 				EventTime: time.Now(),
 				EventType: mm_pubsub.UseCaseUpdatedEvent,
 				EventEntity: &mm_pubsub.UseCaseEventEntity{
-					ID:          useCase.ID,
-					Title:       useCase.Title,
-					Code:        useCase.Code,
-					Description: useCase.Description,
-					Active:      useCase.Active,
-					CreatedAt:   useCase.CreatedAt,
-					UpdatedAt:   useCase.UpdatedAt,
+					ID:          updatedUseCase.ID,
+					Title:       updatedUseCase.Title,
+					Code:        updatedUseCase.Code,
+					Description: updatedUseCase.Description,
+					Active:      updatedUseCase.Active,
+					CreatedAt:   updatedUseCase.CreatedAt,
+					UpdatedAt:   updatedUseCase.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentUseCase, updatedUseCase),
 			},
 		}); err != nil {
 			return err
@@ -194,28 +197,27 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return useCase, nil
+	return updatedUseCase, nil
 }
 
 func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInputDto) (useCaseEntity, error) {
-	var useCase useCaseEntity
+	var currentUseCase useCaseEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseId := uuid.MustParse(input.ID)
-		item, err := s.repository.getUseCaseByID(tx, useCaseId, true)
+		currentUseCase, err := s.repository.getUseCaseByID(tx, useCaseId, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentUseCase) {
 			return errUseCaseNotFound
 		}
 		// Prevent active use cases from being deleted
-		if *item.Active {
+		if *currentUseCase.Active {
 			return errUseCaseCannotBeDeletedWhileActive
 		}
-		useCase = item
-		s.repository.deleteUseCase(tx, useCase)
+		s.repository.deleteUseCase(tx, currentUseCase)
 		// Send an event of useCase deleted
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
@@ -223,14 +225,15 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 				EventTime: time.Now(),
 				EventType: mm_pubsub.UseCaseDeletedEvent,
 				EventEntity: &mm_pubsub.UseCaseEventEntity{
-					ID:          useCase.ID,
-					Title:       useCase.Title,
-					Code:        useCase.Code,
-					Description: useCase.Description,
-					Active:      useCase.Active,
-					CreatedAt:   useCase.CreatedAt,
-					UpdatedAt:   useCase.UpdatedAt,
+					ID:          currentUseCase.ID,
+					Title:       currentUseCase.Title,
+					Code:        currentUseCase.Code,
+					Description: currentUseCase.Description,
+					Active:      currentUseCase.Active,
+					CreatedAt:   currentUseCase.CreatedAt,
+					UpdatedAt:   currentUseCase.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentUseCase, useCaseEntity{}),
 			},
 		}); err != nil {
 			return err
@@ -244,5 +247,5 @@ func (s useCaseService) deleteUseCase(ctx *gin.Context, input deleteUseCaseInput
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return useCase, nil
+	return currentUseCase, nil
 }

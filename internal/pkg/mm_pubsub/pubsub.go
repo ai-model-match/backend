@@ -187,10 +187,11 @@ func (b *PubSubAgent) ReplayMessages(tx *gorm.DB, topicName *PubSubTopic, startF
 		}
 		// Recreate new typed body
 		newBody := PubSubEvent{
-			EventID:     body.EventID,
-			EventTime:   body.EventTime,
-			EventType:   body.EventType,
-			EventEntity: entityPtr,
+			EventID:            body.EventID,
+			EventTime:          body.EventTime,
+			EventType:          body.EventType,
+			EventEntity:        entityPtr,
+			EventChangedFields: body.EventChangedFields,
 		}
 		message := PubSubMessage{
 			Message: newBody,

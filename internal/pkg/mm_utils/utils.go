@@ -157,3 +157,24 @@ Round a Float value to max 2 decimals
 func RoundTo2Decimals(val float64) float64 {
 	return math.Round(val*100) / 100
 }
+
+/*
+DiffStructs returns the list of fields that are different between two structs.
+*/
+func DiffStructs[T any](current, new T) []string {
+	av := reflect.ValueOf(current)
+	bv := reflect.ValueOf(new)
+	t := reflect.TypeOf(current)
+
+	if av.Kind() != reflect.Struct {
+		panic("DiffStructs: only works with struct types")
+	}
+
+	var diffs []string
+	for i := 0; i < av.NumField(); i++ {
+		if !reflect.DeepEqual(av.Field(i).Interface(), bv.Field(i).Interface()) {
+			diffs = append(diffs, t.Field(i).Name)
+		}
+	}
+	return diffs
+}

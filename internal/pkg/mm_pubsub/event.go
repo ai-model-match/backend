@@ -69,9 +69,10 @@ PubSubEvent represents a generic struct for events. All the events must be struc
 ensuring the payload of the event itself is stored inside the EventEntity.
 */
 type PubSubEvent struct {
-	EventID     uuid.UUID       `json:"eventId"`
-	EventTime   time.Time       `json:"eventTime"`
-	EventType   PubSubEventType `json:"eventType"`
-	EventEntity interface{}     `json:"eventEntity"`
-	EventState  *sync.WaitGroup `json:"-"`
+	EventID            uuid.UUID       `json:"eventId"`
+	EventTime          time.Time       `json:"eventTime"`
+	EventType          PubSubEventType `json:"eventType"`
+	EventEntity        interface{}     `json:"eventEntity"`
+	EventChangedFields []string        `json:"eventChangedFields"`
+	EventState         *sync.WaitGroup `json:"-"`
 }
