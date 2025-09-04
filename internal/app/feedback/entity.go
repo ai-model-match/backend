@@ -1,6 +1,8 @@
 package feedback
 
 import (
+	"time"
+
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/google/uuid"
 )
@@ -8,8 +10,9 @@ import (
 type feedbackEntity mm_pubsub.FeedbackEventEntity
 
 type pickerCorrelationEntity struct {
-	ID        uuid.UUID `json:"id"`
-	UseCaseID uuid.UUID `json:"useCaseId"`
-	FlowID    uuid.UUID `json:"flowId"`
-	Fallback  bool      `json:"fallback"`
+	ID        uuid.UUID
+	UseCaseID uuid.UUID
+	FlowID    uuid.UUID
+	Fallback  bool
+	CreatedAt time.Time
 }

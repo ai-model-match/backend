@@ -8,9 +8,10 @@ import (
 
 type pickerCorrelationModel struct {
 	ID        uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
-	UseCaseID uuid.UUID `gorm:"primaryKey;column:use_case_id;type:varchar(36)"`
-	FlowID    uuid.UUID `gorm:"primaryKey;column:flow_id;type:varchar(36)"`
+	UseCaseID uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
+	FlowID    uuid.UUID `gorm:"column:flow_id;type:varchar(36)"`
 	Fallback  bool      `gorm:"column:fallback;type:bool"`
+	CreatedAt time.Time `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
 }
 
 func (m pickerCorrelationModel) TableName() string {
@@ -33,4 +34,8 @@ type feedbackModel struct {
 
 func (m feedbackModel) TableName() string {
 	return "mm_feedback"
+}
+
+func (m feedbackModel) toEntity() feedbackEntity {
+	return feedbackEntity(m)
 }

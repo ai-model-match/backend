@@ -49,6 +49,10 @@ func (r feedbackRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return
 			}
+			if err == errFeedbackAlreadyProvided {
+				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
 			// Errors and output handler
 			if err != nil {
 				zap.L().Error("Something went wrong", zap.String("service", "feedback-router"), zap.Error(err))

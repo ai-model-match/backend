@@ -7,7 +7,8 @@ import (
 )
 
 type feedbackRepositoryInterface interface {
-	getPickerCorrelationByID(tx *gorm.DB, correlationId uuid.UUID) (pickerCorrelationEntity, error)
+	getPickerCorrelationByID(tx *gorm.DB, correlationID uuid.UUID) (pickerCorrelationEntity, error)
+	getRecentFeedbackByCorrelationID(tx *gorm.DB, correlationID uuid.UUID) (feedbackEntity, error)
 	saveFeedback(tx *gorm.DB, feedback feedbackEntity, operation mm_db.SaveOperation) (feedbackEntity, error)
 }
 
@@ -27,6 +28,19 @@ func (r feedbackRepository) getPickerCorrelationByID(tx *gorm.DB, correlationID 
 	}
 	if result.RowsAffected == 0 {
 		return pickerCorrelationEntity{}, nil
+	}
+	return model.toEntity(), nil
+}
+
+func (r feedbackRepository) getRecentFeedbackByCorrelationID(tx *gorm.DB, correlationID uuid.UUID) (feedbackEntity, error) {
+	var model *feedbackModel
+	query := tx.Where("correlation_id = ?", correlationID).Order("created_at DESC")
+	result := query.Limit(1).Find(&model)
+	if result.Error != nil {
+		return feedbackEntity{}, result.Error
+	}
+	if result.RowsAffected == 0 {
+		return feedbackEntity{}, nil
 	}
 	return model.toEntity(), nil
 }

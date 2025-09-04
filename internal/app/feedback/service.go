@@ -42,6 +42,13 @@ func (s feedbackService) createFeedback(ctx *gin.Context, input createFeedbackIn
 		if mm_utils.IsEmpty(correlation) {
 			return errCorrelationNotFound
 		}
+		recentFeedback, err := s.repository.getRecentFeedbackByCorrelationID(tx, uuid.MustParse(input.CorrelationID))
+		if err != nil {
+			return mm_err.ErrGeneric
+		}
+		if !mm_utils.IsEmpty(recentFeedback) && recentFeedback.CreatedAt.After(correlation.CreatedAt) {
+			return errFeedbackAlreadyProvided
+		}
 		newFeedback = feedbackEntity{
 			ID:            uuid.New(),
 			CorrelationID: correlation.ID,
