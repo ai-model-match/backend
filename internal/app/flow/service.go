@@ -65,7 +65,7 @@ func (s flowService) getFlowByID(ctx *gin.Context, input getFlowInputDto) (flowE
 func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flowEntity, error) {
 	now := time.Now()
 	useCaseID := uuid.MustParse(input.UseCaseID)
-	flow := flowEntity{
+	newFlow := flowEntity{
 		ID:              uuid.New(),
 		UseCaseID:       useCaseID,
 		Active:          mm_utils.BoolPtr(false),
@@ -85,7 +85,7 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 		if !exists {
 			return errUseCaseNotFound
 		}
-		if _, err = s.repository.saveFlow(tx, flow, mm_db.Create); err != nil {
+		if _, err = s.repository.saveFlow(tx, newFlow, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow created
@@ -95,16 +95,17 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowCreatedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:              flow.ID,
-					UseCaseID:       flow.UseCaseID,
-					Active:          flow.Active,
-					Title:           flow.Title,
-					Description:     flow.Description,
-					Fallback:        flow.Fallback,
-					CurrentServePct: flow.CurrentServePct,
-					CreatedAt:       flow.CreatedAt,
-					UpdatedAt:       flow.UpdatedAt,
+					ID:              newFlow.ID,
+					UseCaseID:       newFlow.UseCaseID,
+					Active:          newFlow.Active,
+					Title:           newFlow.Title,
+					Description:     newFlow.Description,
+					Fallback:        newFlow.Fallback,
+					CurrentServePct: newFlow.CurrentServePct,
+					CreatedAt:       newFlow.CreatedAt,
+					UpdatedAt:       newFlow.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(flowEntity{}, newFlow),
 			},
 		}); err != nil {
 			return err
@@ -118,55 +119,55 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return flow, nil
+	return newFlow, nil
 }
 
 func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flowEntity, error) {
 	now := time.Now()
-	var flow flowEntity
+	var updatedFlow flowEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the Flow exists
 		flowID := uuid.MustParse(input.ID)
-		item, err := s.repository.getFlowByID(tx, flowID, true)
+		currentFlow, err := s.repository.getFlowByID(tx, flowID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentFlow) {
 			return errFlowNotFound
 		}
 		// Update flow information based on inputs
-		flow = item
-		flow.UpdatedAt = now
+		updatedFlow = currentFlow
+		updatedFlow.UpdatedAt = now
 		if input.Title != nil {
-			flow.Title = *input.Title
+			updatedFlow.Title = *input.Title
 		}
 		if input.Description != nil {
-			flow.Description = *input.Description
+			updatedFlow.Description = *input.Description
 		}
 		if input.Active != nil {
-			flow.Active = input.Active
+			updatedFlow.Active = input.Active
 		}
 		if input.Fallback != nil {
 			// If you are trying to remove the fallback, cannot be done if the use case is active
-			if *flow.Fallback && !*input.Fallback {
-				if isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID); err != nil {
+			if *updatedFlow.Fallback && !*input.Fallback {
+				if isActive, err := s.repository.checkUseCaseIsActive(tx, updatedFlow.UseCaseID); err != nil {
 					return err
 				} else if isActive {
 					return errFlowCannotRemoveFallbackWithActiveUseCase
 				}
 			}
-			flow.Fallback = input.Fallback
+			updatedFlow.Fallback = input.Fallback
 		}
 		if input.CurrentServePct != nil {
-			flow.CurrentServePct = mm_utils.RoundTo2DecimalsPtr(input.CurrentServePct)
+			updatedFlow.CurrentServePct = mm_utils.RoundTo2DecimalsPtr(input.CurrentServePct)
 		}
-		if _, err = s.repository.saveFlow(tx, flow, mm_db.Update); err != nil {
+		if _, err = s.repository.saveFlow(tx, updatedFlow, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// If this flow is the fallback one, remove fallback from others if any
-		if *flow.Fallback {
-			if err = s.repository.makeFallbackConsistent(tx, flow); err != nil {
+		if *updatedFlow.Fallback {
+			if err = s.repository.makeFallbackConsistent(tx, updatedFlow); err != nil {
 				return mm_err.ErrGeneric
 			}
 		}
@@ -177,16 +178,17 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowUpdatedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:              flow.ID,
-					UseCaseID:       flow.UseCaseID,
-					Active:          flow.Active,
-					Title:           flow.Title,
-					Description:     flow.Description,
-					Fallback:        flow.Fallback,
-					CurrentServePct: flow.CurrentServePct,
-					CreatedAt:       flow.CreatedAt,
-					UpdatedAt:       flow.UpdatedAt,
+					ID:              updatedFlow.ID,
+					UseCaseID:       updatedFlow.UseCaseID,
+					Active:          updatedFlow.Active,
+					Title:           updatedFlow.Title,
+					Description:     updatedFlow.Description,
+					Fallback:        updatedFlow.Fallback,
+					CurrentServePct: updatedFlow.CurrentServePct,
+					CreatedAt:       updatedFlow.CreatedAt,
+					UpdatedAt:       updatedFlow.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentFlow, updatedFlow),
 			},
 		}); err != nil {
 			return err
@@ -200,31 +202,30 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return flow, nil
+	return updatedFlow, nil
 }
 
 func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flowEntity, error) {
-	var flow flowEntity
+	var currentFlow flowEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		flowID := uuid.MustParse(input.ID)
-		item, err := s.repository.getFlowByID(tx, flowID, true)
+		currentFlow, err := s.repository.getFlowByID(tx, flowID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentFlow) {
 			return errFlowNotFound
 		}
-		flow = item
 		// Avoid to delete a Flow if it is a fallback and the use case is active
-		if *flow.Fallback {
-			if isActive, err := s.repository.checkUseCaseIsActive(tx, flow.UseCaseID); err != nil {
+		if *currentFlow.Fallback {
+			if isActive, err := s.repository.checkUseCaseIsActive(tx, currentFlow.UseCaseID); err != nil {
 				return err
 			} else if isActive {
 				return errFlowCannotDeleteIfFallbackAndUseCaseActive
 			}
 		}
-		if _, err := s.repository.deleteFlow(tx, flow); err != nil {
+		if _, err := s.repository.deleteFlow(tx, currentFlow); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow deleted
@@ -234,16 +235,17 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowDeletedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:              flow.ID,
-					UseCaseID:       flow.UseCaseID,
-					Active:          flow.Active,
-					Title:           flow.Title,
-					Description:     flow.Description,
-					Fallback:        flow.Fallback,
-					CurrentServePct: flow.CurrentServePct,
-					CreatedAt:       flow.CreatedAt,
-					UpdatedAt:       flow.UpdatedAt,
+					ID:              currentFlow.ID,
+					UseCaseID:       currentFlow.UseCaseID,
+					Active:          currentFlow.Active,
+					Title:           currentFlow.Title,
+					Description:     currentFlow.Description,
+					Fallback:        currentFlow.Fallback,
+					CurrentServePct: currentFlow.CurrentServePct,
+					CreatedAt:       currentFlow.CreatedAt,
+					UpdatedAt:       currentFlow.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentFlow, flowEntity{}),
 			},
 		}); err != nil {
 			return err
@@ -257,12 +259,12 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return flow, nil
+	return currentFlow, nil
 }
 
 func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowEntity, error) {
 	now := time.Now()
-	var flow flowEntity
+	var newFlow flowEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the flow to be cloned exists
@@ -275,7 +277,7 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			return errFlowNotFound
 		}
 		// Create a new Flow entity starting from the cloned one
-		flow = flowEntity{
+		newFlow = flowEntity{
 			ID:              uuid.New(),
 			UseCaseID:       item.UseCaseID,
 			Active:          mm_utils.BoolPtr(false),
@@ -287,7 +289,7 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			UpdatedAt:       now,
 			ClonedFromID:    &item.ID,
 		}
-		if _, err = s.repository.saveFlow(tx, flow, mm_db.Create); err != nil {
+		if _, err = s.repository.saveFlow(tx, newFlow, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Send an event of flow created
@@ -297,17 +299,18 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowCreatedEvent,
 				EventEntity: &mm_pubsub.FlowEventEntity{
-					ID:              flow.ID,
-					UseCaseID:       flow.UseCaseID,
-					Active:          flow.Active,
-					Title:           flow.Title,
-					Description:     flow.Description,
-					Fallback:        flow.Fallback,
-					CurrentServePct: flow.CurrentServePct,
-					CreatedAt:       flow.CreatedAt,
-					UpdatedAt:       flow.UpdatedAt,
-					ClonedFromID:    flow.ClonedFromID,
+					ID:              newFlow.ID,
+					UseCaseID:       newFlow.UseCaseID,
+					Active:          newFlow.Active,
+					Title:           newFlow.Title,
+					Description:     newFlow.Description,
+					Fallback:        newFlow.Fallback,
+					CurrentServePct: newFlow.CurrentServePct,
+					CreatedAt:       newFlow.CreatedAt,
+					UpdatedAt:       newFlow.UpdatedAt,
+					ClonedFromID:    newFlow.ClonedFromID,
 				},
+				EventChangedFields: mm_utils.DiffStructs(flowEntity{}, newFlow),
 			},
 		}); err != nil {
 			return err
@@ -321,5 +324,5 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return flow, nil
+	return newFlow, nil
 }
