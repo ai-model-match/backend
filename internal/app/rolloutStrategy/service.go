@@ -46,7 +46,7 @@ func (s rolloutStrategyService) getRolloutStrategyByUseCaseID(ctx *gin.Context, 
 
 func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (rolloutStrategyEntity, error) {
 	now := time.Now()
-	var rolloutStrategy rolloutStrategyEntity
+	var newRolloutStrategy rolloutStrategyEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Retrieve and check if the related Use Case exists
@@ -66,7 +66,7 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 			return errRolloutStrategyAlreadyExists
 		}
 		// Create the new Rollout Strategy with default values and store it
-		rolloutStrategy = rolloutStrategyEntity{
+		newRolloutStrategy = rolloutStrategyEntity{
 			ID:           uuid.New(),
 			UseCaseID:    useCaseID,
 			RolloutState: mm_pubsub.RolloutStateInit,
@@ -82,7 +82,7 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 			CreatedAt: now,
 			UpdatedAt: now,
 		}
-		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Create); err != nil {
+		if _, err := s.repository.saveRolloutStrategy(tx, newRolloutStrategy, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Send an event of Rollout Straregy created
@@ -92,13 +92,14 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 				EventTime: time.Now(),
 				EventType: mm_pubsub.RolloutStrategyCreatedEvent,
 				EventEntity: &mm_pubsub.RolloutStrategyEventEntity{
-					ID:            rolloutStrategy.ID,
-					UseCaseID:     rolloutStrategy.UseCaseID,
-					RolloutState:  rolloutStrategy.RolloutState,
-					Configuration: rolloutStrategy.Configuration,
-					CreatedAt:     rolloutStrategy.CreatedAt,
-					UpdatedAt:     rolloutStrategy.UpdatedAt,
+					ID:            newRolloutStrategy.ID,
+					UseCaseID:     newRolloutStrategy.UseCaseID,
+					RolloutState:  newRolloutStrategy.RolloutState,
+					Configuration: newRolloutStrategy.Configuration,
+					CreatedAt:     newRolloutStrategy.CreatedAt,
+					UpdatedAt:     newRolloutStrategy.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(rolloutStrategyEntity{}, newRolloutStrategy),
 			},
 		}); err != nil {
 			return err
@@ -112,44 +113,45 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return rolloutStrategy, nil
+	return newRolloutStrategy, nil
 }
 
 func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error) {
 	now := time.Now()
-	var rolloutStrategy rolloutStrategyEntity
+	var updatedRolloutStrategy rolloutStrategyEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
 		useCaseID := uuid.MustParse(input.UseCaseID)
-		if item, err := s.repository.getRolloutStrategyByUseCaseID(tx, useCaseID, true); err != nil {
+		currentRolloutStrategy, err := s.repository.getRolloutStrategyByUseCaseID(tx, useCaseID, true)
+		if err != nil {
 			return mm_err.ErrGeneric
-		} else if mm_utils.IsEmpty(item) {
+		} else if mm_utils.IsEmpty(currentRolloutStrategy) {
 			return errRolloutStrategyNotFound
 		} else {
-			rolloutStrategy = item
+			updatedRolloutStrategy = currentRolloutStrategy
 		}
 		// Avoid change configuration with Rollout State different from INIT
-		if input.Configuration != nil && rolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
+		if input.Configuration != nil && updatedRolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
 			return errRolloutStrategyNotEditableWhileActive
 		}
 		// Check request to change Rollout state
-		if input.RolloutState != nil && mm_pubsub.RolloutState(*input.RolloutState) != rolloutStrategy.RolloutState {
+		if input.RolloutState != nil && mm_pubsub.RolloutState(*input.RolloutState) != updatedRolloutStrategy.RolloutState {
 			// Check the flow, if cna be move to next state
-			if ok := checkStateFlow(rolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
-				rolloutStrategy.RolloutState = mm_pubsub.RolloutState(*input.RolloutState)
+			if ok := checkStateFlow(updatedRolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
+				updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutState(*input.RolloutState)
 			} else {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
 			// Now, if we are activating Rollout Strategy (from INIT to WARMUP), but there is no warmup config, move to ADAPT
-			if rolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(rolloutStrategy.Configuration.Warmup) {
-				rolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
+			if updatedRolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(updatedRolloutStrategy.Configuration.Warmup) {
+				updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
 			}
 		}
 		// Check request to change Rollout configuration
 		if input.Configuration != nil {
 			// not allowed if the state is not INIT
-			if rolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
+			if updatedRolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
 				return errRolloutStrategyTransitionStateNotAllowed
 			}
 			// Round decimals on percentages for Warmup
@@ -171,11 +173,11 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			input.Configuration.Adaptive.MaxStepPct = (mm_utils.RoundTo2Decimals(input.Configuration.Adaptive.MaxStepPct))
 
 			// Update the configuration
-			rolloutStrategy.Configuration = input.Configuration.toEntity()
+			updatedRolloutStrategy.Configuration = input.Configuration.toEntity()
 		}
 		// Save Rollout Strategy
-		rolloutStrategy.UpdatedAt = now
-		if _, err := s.repository.saveRolloutStrategy(tx, rolloutStrategy, mm_db.Update); err != nil {
+		updatedRolloutStrategy.UpdatedAt = now
+		if _, err := s.repository.saveRolloutStrategy(tx, updatedRolloutStrategy, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Send an event of Rollout Straregy updated
@@ -185,13 +187,14 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 				EventTime: time.Now(),
 				EventType: mm_pubsub.RolloutStrategyUpdatedEvent,
 				EventEntity: &mm_pubsub.RolloutStrategyEventEntity{
-					ID:            rolloutStrategy.ID,
-					UseCaseID:     rolloutStrategy.UseCaseID,
-					RolloutState:  rolloutStrategy.RolloutState,
-					Configuration: rolloutStrategy.Configuration,
-					CreatedAt:     rolloutStrategy.CreatedAt,
-					UpdatedAt:     rolloutStrategy.UpdatedAt,
+					ID:            updatedRolloutStrategy.ID,
+					UseCaseID:     updatedRolloutStrategy.UseCaseID,
+					RolloutState:  updatedRolloutStrategy.RolloutState,
+					Configuration: updatedRolloutStrategy.Configuration,
+					CreatedAt:     updatedRolloutStrategy.CreatedAt,
+					UpdatedAt:     updatedRolloutStrategy.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentRolloutStrategy, updatedRolloutStrategy),
 			},
 		}); err != nil {
 			return err
@@ -205,5 +208,5 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return rolloutStrategy, nil
+	return updatedRolloutStrategy, nil
 }
