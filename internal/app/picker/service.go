@@ -41,7 +41,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	var fallbackFlow flowEntity
 	var selectedFlow flowEntity
 	var selectedFlowStep flowStepEntity
-	var pickedEntity pickerEntity
+	var newPickedEntity pickerEntity
 	var isFallback bool = false
 	var isFirstCorrelation bool = false
 	eventsToPublish := []mm_pubsub.EventToPublish{}
@@ -152,7 +152,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		pickedEntity = pickerEntity{
+		newPickedEntity = pickerEntity{
 			ID:                 uuid.New(),
 			UseCaseID:          useCase.ID,
 			UseCaseStepID:      useCaseStep.ID,
@@ -167,7 +167,7 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			CreatedAt:          time.Now(),
 		}
 		// Save request and relative response on DB for further analysis
-		if _, err := s.repository.savePickerEntity(tx, pickedEntity, mm_db.Create); err != nil {
+		if _, err := s.repository.savePickerEntity(tx, newPickedEntity, mm_db.Create); err != nil {
 			return err
 		}
 		// Persist an event to Picker topic
@@ -177,19 +177,20 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 				EventTime: time.Now(),
 				EventType: mm_pubsub.PickerMatchedEvent,
 				EventEntity: &mm_pubsub.PickerEventEntity{
-					ID:                 pickedEntity.ID,
-					UseCaseID:          pickedEntity.UseCaseID,
-					UseCaseStepID:      pickedEntity.UseCaseStepID,
-					FlowID:             pickedEntity.FlowID,
-					FlowStepID:         pickedEntity.FlowStepID,
-					CorrelationID:      pickedEntity.CorrelationID,
-					IsFirstCorrelation: pickedEntity.IsFirstCorrelation,
-					IsFallback:         pickedEntity.IsFallback,
-					InputMessage:       pickedEntity.InputMessage,
-					OutputMessage:      pickedEntity.OutputMessage,
-					Placeholders:       pickedEntity.Placeholders,
-					CreatedAt:          pickedEntity.CreatedAt,
+					ID:                 newPickedEntity.ID,
+					UseCaseID:          newPickedEntity.UseCaseID,
+					UseCaseStepID:      newPickedEntity.UseCaseStepID,
+					FlowID:             newPickedEntity.FlowID,
+					FlowStepID:         newPickedEntity.FlowStepID,
+					CorrelationID:      newPickedEntity.CorrelationID,
+					IsFirstCorrelation: newPickedEntity.IsFirstCorrelation,
+					IsFallback:         newPickedEntity.IsFallback,
+					InputMessage:       newPickedEntity.InputMessage,
+					OutputMessage:      newPickedEntity.OutputMessage,
+					Placeholders:       newPickedEntity.Placeholders,
+					CreatedAt:          newPickedEntity.CreatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(pickerEntity{}, newPickedEntity),
 			},
 		}); err != nil {
 			return err
@@ -204,6 +205,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		// Send event on PubSub
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return pickedEntity, nil
+	return newPickedEntity, nil
 
 }
