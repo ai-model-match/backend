@@ -284,7 +284,7 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			Title:           input.NewTitle,
 			Description:     item.Description,
 			Fallback:        mm_utils.BoolPtr(false),
-			CurrentServePct: item.CurrentServePct,
+			CurrentServePct: mm_utils.Float64Ptr(0),
 			CreatedAt:       now,
 			UpdatedAt:       now,
 			ClonedFromID:    &item.ID,
