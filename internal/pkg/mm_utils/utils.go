@@ -178,3 +178,17 @@ func DiffStructs[T any](current, new T) []string {
 	}
 	return diffs
 }
+
+/*
+Check if one of the provided elements are included in the slice
+*/
+func SliceContainsAtLeastOneOf[T comparable](slice []T, elements []T) bool {
+	for _, e := range elements {
+		for _, v := range slice {
+			if v == e {
+				return true
+			}
+		}
+	}
+	return false
+}

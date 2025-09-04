@@ -12,7 +12,7 @@ type flowEntity struct {
 	UseCaseID       uuid.UUID `json:"useCaseId"`
 	Active          bool      `json:"active"`
 	Fallback        bool      `json:"fallback"`
-	CurrentServePct float64   `json:"currentServePct"`
+	CurrentServePct *float64  `json:"currentServePct"`
 	UpdatedAt       time.Time `json:"updatedAt"`
 }
 

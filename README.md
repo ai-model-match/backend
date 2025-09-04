@@ -44,9 +44,11 @@ flowchart LR
 ```
 
 ### Rollout Strategy Rules
-- The Rollout Strategy is not needed for incoming requests, but based on its rules, can impact which Flow could serve the next incoming requests.
-- The Rollout Strategy configuration can be updated only in INIT status.
-- When the Rollout Strategy moved to Warmup status, Flow statistics are cleaned up for the new rollout session.
+- The Rollout Strategy is not required for incoming requests; however, its rules can influence which Flow will handle the next request.
+- The Rollout Strategy configuration can only be updated when in the INIT status.
+- When the Rollout Strategy transitions to the WARMUP status, all Flow and Flow Step Statistics are reset for the new rollout session.
+- During the WARMUP phase, the system adjusts active Flows to achieve the defined goals. Any Flows without a specified goal are automatically distributed equally by percentage to ensure the total reaches 100%.
+- During both the WARMUP and ADAPT phases, if an active flow matches an escape rule, the system triggers the escape process and adapts flows according to the defined rollback rules. All other active flows not included in the rollback are automatically set to 0%.
 
 ```mermaid
 flowchart LR

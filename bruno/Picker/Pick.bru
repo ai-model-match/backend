@@ -20,8 +20,13 @@ body:json {
   {
     "useCaseCode": "code-a",
     "useCaseStepCode": "code-step-1",
-    "correlationId": "2cde489c-272a-4c92-a12f-3bb1e8fa962d"
+    "correlationId": "d64c5036-2453-47d0-938e-40cbd6eaae11"
   }
+}
+
+script:post-response {
+  bru.setVar("correlationId", res.body?.item?.correlationId);
+  
 }
 
 settings {

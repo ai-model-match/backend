@@ -13,7 +13,7 @@ type flowModel struct {
 	UseCaseID       uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
 	Active          bool      `gorm:"column:active;type:bool"`
 	Fallback        bool      `gorm:"column:fallback;type:bool"`
-	CurrentServePct float64   `gorm:"column:current_pct;type:double precision"`
+	CurrentServePct *float64  `gorm:"column:current_pct;type:double precision"`
 	UpdatedAt       time.Time `gorm:"column:updated_at;type:timestamp;autoUpdateTime:false"`
 }
 
@@ -70,7 +70,6 @@ func (m rolloutStrategyModel) toEntity() rolloutStrategyEntity {
 }
 
 func (m *rolloutStrategyModel) fromEntity(e rolloutStrategyEntity) error {
-	// Store only the necessary fields
 	m.ID = e.ID
 	m.RolloutState = e.RolloutState
 	m.UpdatedAt = e.UpdatedAt

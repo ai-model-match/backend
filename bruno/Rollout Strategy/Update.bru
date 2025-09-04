@@ -15,73 +15,74 @@ auth:bearer {
 }
 
 body:json {
-  {
-    "state": "INIT",
+  { 
+    "state": "WARMUP",
     "configuration": {
-      "warmup": {
-        "interval_mins": 11,
-        "goals": [
-          {
-            "flow_id": "04f71099-e8a5-4d48-a290-b994c4d91104",
-            "final_serve_pct": 40
-          },
-          {
-            "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
-            "final_serve_pct": 30
-          },
-          {
-            "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
-            "final_serve_pct": 30
-          }
-        ]
-      },
-      "escape": {
-        "rules": [
-          {
-            "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
-            "min_feedback": 10,
-            "lower_score": 2.5,
-            "rollback": [
-              {
-                "flow_id": "04f71099-e8a5-4d48-a290-b994c4d91104",
-                "final_serve_pct": 100
-              },
-              {
-                "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
-                "final_serve_pct": 0
-              },
-              {
-                "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
-                "final_serve_pct": 0
-              }
-            ]
-          },
-          {
-            "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
-            "min_feedback": 10,
-            "lower_score": 2.5,
-            "rollback": [
-              {
-                "flow_id": "04f71099-e8a5-4d48-a290-b994c4d91104",
-                "final_serve_pct": 0
-              },
-              {
-                "flow_id": "cbfc6170-4f3e-4cdf-8fd2-2f65dde6a5b1",
-                "final_serve_pct": 100
-              },
-              {
-                "flow_id": "362cf6ac-0b26-4592-82a3-5acc1cca4a65",
-                "final_serve_pct": 0
-              }
-            ]
-          }
-        ]
-      },
-      "adaptive": {
-        "interval_mins": 10,
-        "max_step_pct": 20,
-        "min_feedback": 50
-      }
+        "warmup": {
+          "interval_mins": null,
+          "interval_sess_req": 10,
+          "goals": [
+            {
+              "flow_id": "ec39fd05-b14b-47c3-b4de-0d485c5c8c86",
+              "final_serve_pct": 40
+            },
+            {
+              "flow_id": "2b2b94ec-bda0-49b1-9352-05339c601eff",
+              "final_serve_pct": 30
+            },
+            {
+              "flow_id": "95768ada-e76b-486a-b616-03b69d3e850b",
+              "final_serve_pct": 30
+            }
+          ]
+        },
+        "escape": {
+          "rules": [
+            {
+              "flow_id": "ec39fd05-b14b-47c3-b4de-0d485c5c8c86",
+              "min_feedback": 5,
+              "lower_score": 2,
+              "rollback": [
+                {
+                  "flow_id": "ec39fd05-b14b-47c3-b4de-0d485c5c8c86",
+                  "final_serve_pct": 0
+                },
+                {
+                  "flow_id": "2b2b94ec-bda0-49b1-9352-05339c601eff",
+                  "final_serve_pct": 50
+                },
+                {
+                  "flow_id": "95768ada-e76b-486a-b616-03b69d3e850b",
+                  "final_serve_pct": 50
+                }
+              ]
+            },
+            {
+              "flow_id": "2b2b94ec-bda0-49b1-9352-05339c601eff",
+              "min_feedback": 5,
+              "lower_score": 2,
+              "rollback": [
+                {
+                  "flow_id": "ec39fd05-b14b-47c3-b4de-0d485c5c8c86",
+                  "final_serve_pct": 100
+                },
+                {
+                  "flow_id": "2b2b94ec-bda0-49b1-9352-05339c601eff",
+                  "final_serve_pct": 0
+                },
+                {
+                  "flow_id": "95768ada-e76b-486a-b616-03b69d3e850b",
+                  "final_serve_pct": 0
+                }
+              ]
+            }
+          ]
+        },
+        "adaptive": {
+          "min_feedback": 20,
+          "max_step_pct": 10,
+          "interval_mins": 10
+        }
     }
   }
 }

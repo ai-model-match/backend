@@ -55,8 +55,7 @@ func (r rsEngineConsumer) subscribe() {
 					return
 				}
 				event := msg.Message.EventEntity.(*mm_pubsub.FlowStatisticsEventEntity)
-				// Create the Rollout Strategy
-				if err := r.service.onFlowStatisticsUpdate(*event); err != nil {
+				if err := r.service.onFlowStatisticsUpdate(*event, msg.Message.EventChangedFields); err != nil {
 					zap.L().Error("Impossible to run the rsEngine for the new updated statistics", zap.String("service", "rs-engine-consumer"))
 					return
 				}
@@ -96,10 +95,8 @@ func (r rsEngineConsumer) subscribe() {
 				}
 				event := msg.Message.EventEntity.(*mm_pubsub.RolloutStrategyEventEntity)
 				if event.RolloutState != mm_pubsub.RolloutStateForcedEscaped {
-					zap.L().Info("Ignoring Rollout Strategy Event. Only Forced Escaped events are processed", zap.String("service", "rs-engine-consumer"))
 					return
 				}
-				// Create the Rollout Strategy
 				if err := r.service.onRolloutStrategyForcedEscaped(*event); err != nil {
 					zap.L().Error("Impossible to run the rsEngine for the new updated statistics", zap.String("service", "rs-engine-consumer"))
 					return

@@ -2,14 +2,13 @@ package rsEngine
 
 import (
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
-	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
 type rsEngineRepositoryInterface interface {
-	getRolloutStrategyByUseCaseIDAndStatus(tx *gorm.DB, useCaseID uuid.UUID, status mm_pubsub.RolloutState) (rolloutStrategyEntity, error)
+	getRolloutStrategyByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) (rolloutStrategyEntity, error)
 	getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error)
 	getFlowStatisticsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) ([]flowStatisticsEntity, error)
 	saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error)
@@ -23,9 +22,9 @@ func newRsEngineRepository() rsEngineRepository {
 	return rsEngineRepository{}
 }
 
-func (r rsEngineRepository) getRolloutStrategyByUseCaseIDAndStatus(tx *gorm.DB, useCaseID uuid.UUID, status mm_pubsub.RolloutState) (rolloutStrategyEntity, error) {
+func (r rsEngineRepository) getRolloutStrategyByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) (rolloutStrategyEntity, error) {
 	var model *rolloutStrategyModel
-	query := tx.Where("use_case_id = ? AND rollout_state = ?", useCaseID, status)
+	query := tx.Where("use_case_id = ?", useCaseID)
 	result := query.Limit(1).Find(&model)
 	if result.Error != nil {
 		return rolloutStrategyEntity{}, result.Error
