@@ -68,7 +68,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 	now := time.Now()
 	useCaseID := uuid.MustParse(input.UseCaseID)
 	maxValue := int64(math.MaxInt64)
-	useCaseStep := useCaseStepEntity{
+	newUseCaseStep := useCaseStepEntity{
 		ID:          uuid.New(),
 		UseCaseID:   useCaseID,
 		Title:       input.Title,
@@ -89,11 +89,11 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 			return mm_err.ErrGeneric
 		} else if !mm_utils.IsEmpty(item) {
 			return errUseCaseStepSameCodeAlreadyExists
-		} else if _, err = s.repository.saveUseCaseStep(tx, useCaseStep, mm_db.Create); err != nil {
+		} else if _, err = s.repository.saveUseCaseStep(tx, newUseCaseStep, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
 		} else if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
 			return mm_err.ErrGeneric
-		} else if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
+		} else if newUseCaseStep, err = s.repository.getUseCaseStepByID(tx, newUseCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
@@ -102,15 +102,16 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 				EventTime: time.Now(),
 				EventType: mm_pubsub.UseCaseStepCreatedEvent,
 				EventEntity: &mm_pubsub.UseCaseStepEventEntity{
-					ID:          useCaseStep.ID,
-					UseCaseID:   useCaseStep.UseCaseID,
-					Title:       useCaseStep.Title,
-					Code:        useCaseStep.Code,
-					Description: useCaseStep.Description,
-					Position:    useCaseStep.Position,
-					CreatedAt:   useCaseStep.CreatedAt,
-					UpdatedAt:   useCaseStep.UpdatedAt,
+					ID:          newUseCaseStep.ID,
+					UseCaseID:   newUseCaseStep.UseCaseID,
+					Title:       newUseCaseStep.Title,
+					Code:        newUseCaseStep.Code,
+					Description: newUseCaseStep.Description,
+					Position:    newUseCaseStep.Position,
+					CreatedAt:   newUseCaseStep.CreatedAt,
+					UpdatedAt:   newUseCaseStep.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(useCaseStepEntity{}, newUseCaseStep),
 			},
 		}); err != nil {
 			return err
@@ -124,26 +125,26 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return useCaseStep, nil
+	return newUseCaseStep, nil
 }
 
 func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseCaseStepInputDto) (useCaseStepEntity, error) {
 	now := time.Now()
-	var useCaseStep useCaseStepEntity
+	var updatedUseCaseStep useCaseStepEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		useCaseStepID := uuid.MustParse(input.ID)
-		item, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
+		currentUseCaseStep, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		if mm_utils.IsEmpty(item) {
+		if mm_utils.IsEmpty(currentUseCaseStep) {
 			return errUseCaseStepNotFound
 		}
 		// If the input contains a new code for the use case, check for collision
 		if input.Code != nil {
-			useCaseStepSameCode, err := s.repository.getUseCaseStepByCode(tx, item.UseCaseID, *input.Code, false)
+			useCaseStepSameCode, err := s.repository.getUseCaseStepByCode(tx, currentUseCaseStep.UseCaseID, *input.Code, false)
 			if err != nil {
 				return mm_err.ErrGeneric
 			}
@@ -152,32 +153,32 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 			}
 		}
 		// Update useCaseStep information based on inputs
-		useCaseStep = item
-		useCaseStep.UpdatedAt = now
+		updatedUseCaseStep = currentUseCaseStep
+		updatedUseCaseStep.UpdatedAt = now
 		if input.Title != nil {
-			useCaseStep.Title = *input.Title
+			updatedUseCaseStep.Title = *input.Title
 		}
 		if input.Description != nil {
-			useCaseStep.Description = *input.Description
+			updatedUseCaseStep.Description = *input.Description
 		}
 		if input.Code != nil {
-			useCaseStep.Code = *input.Code
+			updatedUseCaseStep.Code = *input.Code
 		}
 		if input.Position != nil {
 			// If the step is moving in a lower position (e.g. from 10 to 3),
 			// we need to move it one step more, so that, the algorith to re-sort all steps correctly
-			if *useCaseStep.Position > *input.Position {
+			if *updatedUseCaseStep.Position > *input.Position {
 				*input.Position = *input.Position - 1
 			}
-			useCaseStep.Position = input.Position
+			updatedUseCaseStep.Position = input.Position
 		}
-		if _, err = s.repository.saveUseCaseStep(tx, useCaseStep, mm_db.Update); err != nil {
+		if _, err = s.repository.saveUseCaseStep(tx, updatedUseCaseStep, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseStep.UseCaseID); err != nil {
+		if err := s.repository.recalculateUseCaseStepPosition(tx, updatedUseCaseStep.UseCaseID); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if useCaseStep, err = s.repository.getUseCaseStepByID(tx, useCaseStep.ID, false); err != nil {
+		if updatedUseCaseStep, err = s.repository.getUseCaseStepByID(tx, updatedUseCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		}
 		// Send an event of useCaseStep updated
@@ -187,15 +188,16 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 				EventTime: time.Now(),
 				EventType: mm_pubsub.UseCaseStepUpdatedEvent,
 				EventEntity: &mm_pubsub.UseCaseStepEventEntity{
-					ID:          useCaseStep.ID,
-					UseCaseID:   useCaseStep.UseCaseID,
-					Title:       useCaseStep.Title,
-					Code:        useCaseStep.Code,
-					Description: useCaseStep.Description,
-					Position:    useCaseStep.Position,
-					CreatedAt:   useCaseStep.CreatedAt,
-					UpdatedAt:   useCaseStep.UpdatedAt,
+					ID:          updatedUseCaseStep.ID,
+					UseCaseID:   updatedUseCaseStep.UseCaseID,
+					Title:       updatedUseCaseStep.Title,
+					Code:        updatedUseCaseStep.Code,
+					Description: updatedUseCaseStep.Description,
+					Position:    updatedUseCaseStep.Position,
+					CreatedAt:   updatedUseCaseStep.CreatedAt,
+					UpdatedAt:   updatedUseCaseStep.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentUseCaseStep, updatedUseCaseStep),
 			},
 		}); err != nil {
 			return err
@@ -209,11 +211,11 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return useCaseStep, nil
+	return updatedUseCaseStep, nil
 }
 
 func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseCaseStepInputDto) (useCaseStepEntity, error) {
-	var useCaseStep useCaseStepEntity
+	var currentUseCaseStep useCaseStepEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case exists
@@ -225,8 +227,8 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		if mm_utils.IsEmpty(item) {
 			return errUseCaseStepNotFound
 		}
-		useCaseStep = item
-		if _, err := s.repository.deleteUseCaseStep(tx, useCaseStep); err != nil {
+		currentUseCaseStep = item
+		if _, err := s.repository.deleteUseCaseStep(tx, currentUseCaseStep); err != nil {
 			return mm_err.ErrGeneric
 		}
 		if err := s.repository.recalculateUseCaseStepPosition(tx, item.UseCaseID); err != nil {
@@ -240,15 +242,16 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 				EventTime: time.Now(),
 				EventType: mm_pubsub.UseCaseStepDeletedEvent,
 				EventEntity: &mm_pubsub.UseCaseStepEventEntity{
-					ID:          useCaseStep.ID,
-					UseCaseID:   useCaseStep.UseCaseID,
-					Title:       useCaseStep.Title,
-					Code:        useCaseStep.Code,
-					Description: useCaseStep.Description,
-					Position:    useCaseStep.Position,
-					CreatedAt:   useCaseStep.CreatedAt,
-					UpdatedAt:   useCaseStep.UpdatedAt,
+					ID:          currentUseCaseStep.ID,
+					UseCaseID:   currentUseCaseStep.UseCaseID,
+					Title:       currentUseCaseStep.Title,
+					Code:        currentUseCaseStep.Code,
+					Description: currentUseCaseStep.Description,
+					Position:    currentUseCaseStep.Position,
+					CreatedAt:   currentUseCaseStep.CreatedAt,
+					UpdatedAt:   currentUseCaseStep.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentUseCaseStep, useCaseStepEntity{}),
 			},
 		}); err != nil {
 			return err
@@ -262,5 +265,5 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return useCaseStep, nil
+	return currentUseCaseStep, nil
 }
