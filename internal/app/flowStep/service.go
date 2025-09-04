@@ -67,38 +67,39 @@ func (s flowStepService) getFlowStepByID(ctx *gin.Context, input getFlowStepInpu
 
 func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepInputDto) (flowStepEntity, error) {
 	now := time.Now()
-	var flowStep flowStepEntity
+	var updatedFlowStep flowStepEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		flowStepID := uuid.MustParse(input.ID)
-		if item, err := s.repository.getFlowStepByID(tx, flowStepID, true); err != nil {
+		currentFlowStep, err := s.repository.getFlowStepByID(tx, flowStepID, true)
+		if err != nil {
 			return mm_err.ErrGeneric
-		} else if mm_utils.IsEmpty(item) {
+		} else if mm_utils.IsEmpty(currentFlowStep) {
 			return errFlowStepNotFound
 		} else {
-			flowStep = item
+			updatedFlowStep = currentFlowStep
 		}
 		if configuration, err := json.Marshal(input.Configuration); err != nil {
 			return errFlowStepWrongConfigFormat
 		} else {
-			flowStep.Configuration = configuration
+			updatedFlowStep.Configuration = configuration
 		}
 		// Find placeholders to store
 		placeholders := []string{}
 		re := regexp.MustCompile(`\\u003c\\u003c([A-Za-z0-9_-]+)\\u003e\\u003e`)
-		matches := re.FindAllStringSubmatch(string(flowStep.Configuration), -1)
+		matches := re.FindAllStringSubmatch(string(updatedFlowStep.Configuration), -1)
 		for _, match := range matches {
 			if len(match) > 1 {
 				placeholders = append(placeholders, match[1])
 			}
 		}
 		pl, _ := json.Marshal(placeholders)
-		flowStep.Placeholders = json.RawMessage(pl)
-		flowStep.UpdatedAt = now
-		if _, err := s.repository.saveFlowStep(tx, flowStep, mm_db.Update); err != nil {
+		updatedFlowStep.Placeholders = json.RawMessage(pl)
+		updatedFlowStep.UpdatedAt = now
+		if _, err := s.repository.saveFlowStep(tx, updatedFlowStep, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
-		} else if flowStep, err = s.repository.getFlowStepByID(tx, flowStep.ID, false); err != nil {
+		} else if updatedFlowStep, err = s.repository.getFlowStepByID(tx, updatedFlowStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
 		} else if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowStepV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
@@ -106,15 +107,16 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 				EventTime: time.Now(),
 				EventType: mm_pubsub.FlowStepUpdatedEvent,
 				EventEntity: &mm_pubsub.FlowStepEventEntity{
-					ID:            flowStep.ID,
-					FlowID:        flowStep.FlowID,
-					UseCaseID:     flowStep.UseCaseID,
-					UseCaseStepID: flowStep.UseCaseStepID,
-					Configuration: flowStep.Configuration,
-					Placeholders:  flowStep.Placeholders,
-					CreatedAt:     flowStep.CreatedAt,
-					UpdatedAt:     flowStep.UpdatedAt,
+					ID:            updatedFlowStep.ID,
+					FlowID:        updatedFlowStep.FlowID,
+					UseCaseID:     updatedFlowStep.UseCaseID,
+					UseCaseStepID: updatedFlowStep.UseCaseStepID,
+					Configuration: updatedFlowStep.Configuration,
+					Placeholders:  updatedFlowStep.Placeholders,
+					CreatedAt:     updatedFlowStep.CreatedAt,
+					UpdatedAt:     updatedFlowStep.UpdatedAt,
 				},
+				EventChangedFields: mm_utils.DiffStructs(currentFlowStep, updatedFlowStep),
 			},
 		}); err != nil {
 			return err
@@ -128,7 +130,7 @@ func (s flowStepService) updateFlowStep(ctx *gin.Context, input updateFlowStepIn
 	} else {
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
-	return flowStep, nil
+	return updatedFlowStep, nil
 }
 
 func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) error {
@@ -142,7 +144,7 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 		for _, missingFlow := range missingFlows {
 			config, _ := json.Marshal(map[string]interface{}{})
 			placeholders, _ := json.Marshal([]string{})
-			flowStep := flowStepEntity{
+			newFlowStep := flowStepEntity{
 				ID:            uuid.New(),
 				FlowID:        missingFlow.FlowID,
 				UseCaseID:     missingFlow.UseCaseID,
@@ -152,7 +154,7 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 				CreatedAt:     now,
 				UpdatedAt:     now,
 			}
-			if _, err = s.repository.saveFlowStep(tx, flowStep, mm_db.Create); err != nil {
+			if _, err = s.repository.saveFlowStep(tx, newFlowStep, mm_db.Create); err != nil {
 				return mm_err.ErrGeneric
 			}
 			// Send an event of flowStep created
@@ -162,15 +164,16 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 					EventTime: time.Now(),
 					EventType: mm_pubsub.FlowStepCreatedEvent,
 					EventEntity: &mm_pubsub.FlowStepEventEntity{
-						ID:            flowStep.ID,
-						FlowID:        flowStep.FlowID,
-						UseCaseID:     flowStep.UseCaseID,
-						UseCaseStepID: flowStep.UseCaseStepID,
-						Configuration: flowStep.Configuration,
-						Placeholders:  flowStep.Placeholders,
-						CreatedAt:     flowStep.CreatedAt,
-						UpdatedAt:     flowStep.UpdatedAt,
+						ID:            newFlowStep.ID,
+						FlowID:        newFlowStep.FlowID,
+						UseCaseID:     newFlowStep.UseCaseID,
+						UseCaseStepID: newFlowStep.UseCaseStepID,
+						Configuration: newFlowStep.Configuration,
+						Placeholders:  newFlowStep.Placeholders,
+						CreatedAt:     newFlowStep.CreatedAt,
+						UpdatedAt:     newFlowStep.UpdatedAt,
 					},
+					EventChangedFields: mm_utils.DiffStructs(flowStepEntity{}, newFlowStep),
 				},
 			}); err != nil {
 				return err
@@ -222,6 +225,7 @@ func (s flowStepService) cloneStepsFromFlow(newFlowID uuid.UUID, clonedFlowID uu
 						CreatedAt:     clonedFlowStep.CreatedAt,
 						UpdatedAt:     clonedFlowStep.UpdatedAt,
 					},
+					EventChangedFields: mm_utils.DiffStructs(flowStepEntity{}, clonedFlowStep),
 				},
 			}); err != nil {
 				return err
