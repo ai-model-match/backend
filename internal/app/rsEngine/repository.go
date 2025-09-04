@@ -10,7 +10,7 @@ import (
 
 type rsEngineRepositoryInterface interface {
 	getRolloutStrategyByUseCaseIDAndStatus(tx *gorm.DB, useCaseID uuid.UUID, status mm_pubsub.RolloutState) (rolloutStrategyEntity, error)
-	getFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error)
+	getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error)
 	getFlowStatisticsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) ([]flowStatisticsEntity, error)
 	saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error)
 	saveRolloutStrategy(tx *gorm.DB, rolloutStrategy rolloutStrategyEntity, operation mm_db.SaveOperation) (rolloutStrategyEntity, error)
@@ -36,9 +36,9 @@ func (r rsEngineRepository) getRolloutStrategyByUseCaseIDAndStatus(tx *gorm.DB, 
 	return model.toEntity(), nil
 }
 
-func (r rsEngineRepository) getFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error) {
+func (r rsEngineRepository) getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error) {
 	var models []flowModel
-	query := tx.Model(flowModel{}).Where("use_case_id = ?", useCaseID)
+	query := tx.Model(flowModel{}).Where("use_case_id = ?", useCaseID).Where("active IS TRUE")
 	if forUpdate {
 		query.Clauses(clause.Locking{Strength: "UPDATE"})
 	}

@@ -47,7 +47,7 @@ func (s rsEngineScheduler) init() {
 }
 
 /*
-Scheduled function to run. It runs the heartbeat of RS engine
+Scheduled function to run. It runs the onTimeTick of RS engine
 */
 func (s rsEngineScheduler) rsEngineTimeTick(p mm_scheduler.ScheduledJobParameter) error {
 	// If this istance acquires the lock, executre the business logic

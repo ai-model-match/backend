@@ -47,7 +47,6 @@ type FlowStatisticsEventEntity struct {
 	UseCaseID          uuid.UUID `json:"useCaseId"`
 	TotRequests        int64     `json:"totRequests"`
 	TotSessionRequests int64     `json:"totSessionRequests"`
-	CurrentServePct    float64   `json:"currentServePct"`
 	TotFeedback        int64     `json:"totFeedback"`
 	AvgScore           float64   `json:"avgScore"`
 	CreatedAt          time.Time `json:"createdAt"`
