@@ -12,7 +12,7 @@ import (
 
 type rsEngineServiceInterface interface {
 	onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEventEntity, updatedFields []string) error
-	onRolloutStrategyForcedEscaped(event mm_pubsub.RolloutStrategyEventEntity) error
+	onRolloutStrategyChangeState(event mm_pubsub.RolloutStrategyEventEntity) error
 	onTimeTick() error
 }
 
@@ -196,6 +196,7 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 								f.UpdatedAt = time.Now()
 								s.repository.saveFlow(tx, f, mm_db.Update)
 							}
+							break
 						}
 					}
 				}
@@ -212,17 +213,62 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 /*
 In case a Rollout Strategy is forced to escape, run the Rollout strategy evaluation.
 */
-func (s rsEngineService) onRolloutStrategyForcedEscaped(event mm_pubsub.RolloutStrategyEventEntity) error {
-	// We only process Forced Escaped events
-	if event.RolloutState != mm_pubsub.RolloutStateForcedEscaped {
-		zap.L().Info("Ignoring Rollout Strategy Event. Only Forced Escaped events are processed", zap.String("service", "rs-engine-consumer"))
+func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStrategyEventEntity) error {
+	rs := rolloutStrategyEntity{
+		ID:            event.ID,
+		UseCaseID:     event.UseCaseID,
+		RolloutState:  event.RolloutState,
+		Configuration: event.Configuration,
+		UpdatedAt:     event.UpdatedAt,
+	}
+	// If the RS is not in the FORCED_ESCAPED, skip it
+	if rs.RolloutState != mm_pubsub.RolloutStateForcedEscaped {
 		return nil
 	}
-	// 1. The event represents the RS
-	// 2. Retrieve all Flows for the Use Case by event.UseCaseID
-	// 3. Update each Flow current PCT based on the event.Configuration.Escape
-	// 4. Done
-	zap.L().Info("onRolloutStrategyForcedEscaped called", zap.String("service", "rs-engine-service"))
+	// If the Escape configuration is not defined, skip it
+	if rs.Configuration.Escape == nil {
+		return nil
+	}
+	// Start transaction
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		// Representation of Escape rules (FlowID --> Escape Rule)
+		indexedRules := map[string]mm_pubsub.RsEscapeRule{}
+		for _, rule := range rs.Configuration.Escape.Rules {
+			indexedRules[rule.FlowID.String()] = rule
+		}
+		// Retrieve all active Flows for the Use Case
+		flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+		if err != nil {
+			return err
+		}
+		for _, flow := range flows {
+			// Per each flow check if there is an explicit Rule for Escape
+			if rule, ok := indexedRules[flow.ID.String()]; ok {
+				// Representation of Escape rules (FlowID --> Escape Rule)
+				indexedRollback := map[string]mm_pubsub.RsEscapeRollback{}
+				for _, rb := range rule.Rollback {
+					indexedRollback[rb.FlowID.String()] = rb
+				}
+				// Adapt all Flows to the Rollback PCTs
+				for _, f := range flows {
+					// For each active Flow check if there is a Rollback rule that
+					// determine the final Pct, otherwise set to 0
+					if rb, ok := indexedRollback[f.ID.String()]; ok {
+						f.CurrentServePct = &rb.FinalServePct
+					} else {
+						f.CurrentServePct = mm_utils.Float64Ptr(0)
+					}
+					f.UpdatedAt = time.Now()
+					s.repository.saveFlow(tx, f, mm_db.Update)
+				}
+				break
+			}
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return errTransaction
+	}
 	return nil
 }
 

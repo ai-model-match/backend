@@ -136,7 +136,7 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			return errRolloutStrategyNotEditableWhileActive
 		}
 		// Check request to change Rollout state
-		if input.RolloutState != nil && mm_pubsub.RolloutState(*input.RolloutState) != updatedRolloutStrategy.RolloutState {
+		if input.RolloutState != nil {
 			// Check the flow, if cna be move to next state
 			if ok := checkStateFlow(updatedRolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
 				updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutState(*input.RolloutState)

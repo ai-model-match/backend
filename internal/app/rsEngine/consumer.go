@@ -94,10 +94,7 @@ func (r rsEngineConsumer) subscribe() {
 					return
 				}
 				event := msg.Message.EventEntity.(*mm_pubsub.RolloutStrategyEventEntity)
-				if event.RolloutState != mm_pubsub.RolloutStateForcedEscaped {
-					return
-				}
-				if err := r.service.onRolloutStrategyForcedEscaped(*event); err != nil {
+				if err := r.service.onRolloutStrategyChangeState(*event); err != nil {
 					zap.L().Error("Impossible to run the rsEngine for the new updated statistics", zap.String("service", "rs-engine-consumer"))
 					return
 				}
