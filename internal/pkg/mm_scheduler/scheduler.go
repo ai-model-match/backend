@@ -1,6 +1,8 @@
 package mm_scheduler
 
 import (
+	"context"
+
 	"github.com/go-co-op/gocron/v2"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -68,33 +70,53 @@ func (s Scheduler) AddJob(job ScheduledJob) error {
 }
 
 /*
+Given a generic DB Connection, get a specific low-level connection to DB.
+It is used for low-level locks for scheduled activities
+*/
+func (s Scheduler) GetSingleConnection(tx *gorm.DB) *SingleConnection {
+	sqlDB, _ := tx.DB()
+	ctx := context.Background()
+	conn, _ := sqlDB.Conn(ctx)
+	return &SingleConnection{
+		ctx:  ctx,
+		conn: conn,
+	}
+}
+
+/*
 For distributed systems, it ensure scheduled tasks are executed once.
 One instance of the application will aquire a exclusive DB Lock preventing other instances to run the same job.
 Scheduled tasks need to be idenpotent, so multiple executions, even in parallel, should not break.
 This approach is useful to avoid DB overload.
 */
-func (s Scheduler) AcquireLock(tx *gorm.DB, jobID int64) bool {
+func (s Scheduler) AcquireLock(sc *SingleConnection, jobID int64) bool {
 	// Try to release the lock based on the unique JobID. Unless this app instance acquired the lock before, it will not succeed
 	// So, we can ignore it because the lock could not exist (first execution) or it is acquired by another DB session (generally another app instance)
 	var released bool
-	if r := tx.Raw("SELECT pg_advisory_unlock(?);", jobID).Scan(&released); r.Error != nil {
-		zap.L().Error("Lock release failed!", zap.Int64("jobID", jobID), zap.Error(r.Error), zap.String("service", "scheduler"))
+	var connectionID int
+	if err := sc.conn.QueryRowContext(sc.ctx, "SELECT pg_backend_pid()").Scan(&connectionID); err != nil {
+		zap.L().Error("Error in getting PID. Connection already in use. Check your configuration", zap.Int64("jobID", jobID), zap.Error(err), zap.String("service", "scheduler"))
+		return false
+	}
+	if err := sc.conn.QueryRowContext(sc.ctx, "SELECT pg_advisory_unlock($1);", jobID).Scan(&released); err != nil {
+		zap.L().Error("Lock release failed!", zap.Int("Connection ID", connectionID), zap.Int64("jobID", jobID), zap.Error(err), zap.String("service", "scheduler"))
+		return false
 	} else if !released {
-		zap.L().Info("Lock not released... ignore it!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
+		zap.L().Debug("Lock not released... ignore it!", zap.Int("Connection ID", connectionID), zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 	} else {
-		zap.L().Info("Lock released!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
+		zap.L().Debug("Lock released!", zap.Int("Connection ID", connectionID), zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 	}
 	// Now, try to acquire the lock with the same JobID. If fails, it means that someone else already taken the lock, so there is
 	// another app instance that will execute this specific job
 	var acquired bool
-	if r := tx.Raw("SELECT pg_try_advisory_lock(?);", jobID).Scan(&acquired); r.Error != nil {
-		zap.L().Error("Lock acquisition failed!", zap.Int64("jobID", jobID), zap.Error(r.Error), zap.String("service", "scheduler"))
+	if err := sc.conn.QueryRowContext(sc.ctx, "SELECT pg_try_advisory_lock($1);", jobID).Scan(&acquired); err != nil {
+		zap.L().Error("Lock acquisition failed!", zap.Int("Connection ID", connectionID), zap.Int64("jobID", jobID), zap.Error(err), zap.String("service", "scheduler"))
 		return false
 	} else if !acquired {
-		zap.L().Info("Lock not acquired... another service is managing it!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
+		zap.L().Debug("Lock not acquired... another service is managing it!", zap.Int("Connection ID", connectionID), zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 		return false
 	} else {
-		zap.L().Info("Lock acquired!", zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
+		zap.L().Debug("Lock acquired!", zap.Int("Connection ID", connectionID), zap.Int64("jobID", jobID), zap.String("service", "scheduler"))
 		return true
 	}
 }
