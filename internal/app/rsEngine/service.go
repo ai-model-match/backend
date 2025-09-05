@@ -1,12 +1,12 @@
 package rsEngine
 
 import (
+	"math"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
-	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
@@ -221,7 +221,7 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 		Configuration: event.Configuration,
 		UpdatedAt:     event.UpdatedAt,
 	}
-	// If the RS is not in the FORCED_ESCAPED, skip it
+	// If the RS is FORCED_ESCAPED
 	if rs.RolloutState == mm_pubsub.RolloutStateForcedEscaped {
 		// If the Escape configuration is not defined, skip it
 		if rs.Configuration.Escape == nil {
@@ -268,7 +268,7 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 			return errTransaction
 		}
 	}
-	// If the RS is not in the FORCED_ESCAPED, skip it
+	// If the RS is FORCED_COMPLETED
 	if rs.RolloutState == mm_pubsub.RolloutStateForcedCompleted {
 		// If the Escape configuration is not defined, skip it
 		if rs.Configuration.StateConfigurations.CompletedFlowID == nil {
@@ -300,7 +300,6 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 			return errTransaction
 		}
 	}
-
 	return nil
 }
 
@@ -308,11 +307,81 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 Each minute check which Rollout Strategies need to be evaluated and proceed.
 */
 func (s rsEngineService) onTimeTick() error {
-	// 1. Retrieve all RS in WARMUP having a RS.Configuration.Warmup based on timing or in ADAPTIVE status. Now for each RS:
-	// 2. Retrieve all Flows for the Use Case by RS.UseCaseID
-	// 3. Update each Flow current PCT based on the RS.Configuration.Warmup or RS.Configuration.Adaptive based on the state
-	// 4. Valuate if the state of the RS needs to be updated (e.g. WARMUP to ADAPTIVE or WARMUP to ESCAPE or ADAPTIVE to ESCAPE or ADAPTIVE to COMPLETED).
-	// 5. Done
-	zap.L().Info("onTimeTick called", zap.String("service", "rs-engine-service"))
+	rolloutStrategies, err := s.repository.getActiveRolloutStrategiesInState(s.storage, []mm_pubsub.RolloutState{mm_pubsub.RolloutStateWarmup, mm_pubsub.RolloutStateAdaptive})
+	if err != nil {
+		return err
+	}
+	// For each Rollout Strategy, run in parallel their warmup or adaptive phase
+	for _, rs := range rolloutStrategies {
+		// If the RS is not in the WARMUP status, skip it
+		if rs.RolloutState == mm_pubsub.RolloutStateWarmup {
+			// If the Warmup configuration is not base on Time rules, skip it
+			if rs.Configuration.Warmup.IntervalMins == nil {
+				return nil
+			}
+			// List of Flows without an explicit Warmup goal
+			activeFlowsWithoutGoal := []flowEntity{}
+			// Representation of Warmup goal (FlowID --> Pct Goal)
+			indexedGoals := map[string]float64{}
+			for _, goal := range rs.Configuration.Warmup.Goals {
+				indexedGoals[goal.FlowID.String()] = goal.FinalServePct
+			}
+			// Start transaction
+			errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+				// Retrieve all active Flows for the Use Case
+				flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+				if err != nil {
+					return err
+				}
+				// From now, check how many minutes are missing to reach the target (start of WARMUP + Interval Mins)
+				missingMinutes := int64(math.Round(time.Until((rs.UpdatedAt.Add(time.Duration(*rs.Configuration.Warmup.IntervalMins * int64(time.Minute))))).Minutes()))
+				// Specific case, should never happen, force to 0, so move automatically to ADAPTIVE
+				if missingMinutes < 0 {
+					missingMinutes = 0
+				}
+				// Indicates if all Flows have achieved their goal
+				var flowGoalAchieved bool = true
+				var totalPctReservedForGoals float64 = 0
+				for _, flow := range flows {
+					// Per each flow update PCT and check if there is an explicit Warmup goal achieved
+					if pctGoal, ok := indexedGoals[flow.ID.String()]; !ok {
+						// No explicit Warmup goal, add to the list
+						activeFlowsWithoutGoal = append(activeFlowsWithoutGoal, flow)
+						continue
+					} else {
+						// Update the Flow PCT based on statistics
+						flow.CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flow.CurrentServePct, pctGoal, 0, missingMinutes))
+						totalPctReservedForGoals += pctGoal
+						flow.UpdatedAt = time.Now()
+						// Save and check if the goal has been achieved
+						s.repository.saveFlow(tx, flow, mm_db.Update)
+						if *flow.CurrentServePct != pctGoal {
+							flowGoalAchieved = false
+						}
+					}
+				}
+				// Now that we updated all Flows with an explicit Warmup goal, proceed with others
+				remainingPctPerFlow := (100.0 - totalPctReservedForGoals) / float64(len(activeFlowsWithoutGoal))
+				for _, flow := range activeFlowsWithoutGoal {
+					flow.CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flow.CurrentServePct, remainingPctPerFlow, 0, missingMinutes))
+					flow.UpdatedAt = time.Now()
+					s.repository.saveFlow(tx, flow, mm_db.Update)
+					if *flow.CurrentServePct != remainingPctPerFlow {
+						flowGoalAchieved = false
+					}
+				}
+				// If all flows have achieved their goal, we can move to the next state
+				if flowGoalAchieved {
+					rs.RolloutState = mm_pubsub.RolloutStateAdaptive
+					rs.UpdatedAt = time.Now()
+					s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+				}
+				return nil
+			})
+			if errTransaction != nil {
+				return errTransaction
+			}
+		}
+	}
 	return nil
 }
