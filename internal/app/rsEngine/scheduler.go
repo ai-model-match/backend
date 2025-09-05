@@ -63,7 +63,7 @@ func (s rsEngineScheduler) rsEngineTimeTick(p mm_scheduler.ScheduledJobParameter
 	if lockAcquired := s.scheduler.AcquireLock(s.singleConnection, p.JobID); lockAcquired {
 		zap.L().Info("Starting Cron Job...", zap.String("job", p.Title))
 		if err := s.service.onTimeTick(); err != nil {
-			zap.L().Error("Cron Job Failed", zap.String("job", p.Title), zap.Error(err))
+			zap.L().Error("Cron Job Failed", zap.String("job", p.Title), zap.Error(err), zap.String("service", "rs-engine-scheduler"))
 			return err
 		}
 		zap.L().Info("Cron Job executed!", zap.String("job", p.Title))
