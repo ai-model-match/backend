@@ -53,15 +53,18 @@ flowchart LR
 ```mermaid
 flowchart LR
     INIT -->|start| WARMUP
+    WARMUP --> FORCED_STOP
     WARMUP --> FORCED_ESCAPED
     WARMUP --> FORCED_COMPLETED
     WARMUP -->|automatic| ADAPTIVE
+    ADAPTIVE --> FORCED_STOP
     ADAPTIVE --> FORCED_ESCAPED
     ADAPTIVE --> FORCED_COMPLETED
     ADAPTIVE -->|automatic| ESCAPED
     ADAPTIVE -->|automatic| COMPLETED
     ESCAPED --> Back_to_INIT
     COMPLETED --> Back_to_INIT
+    FORCED_STOP --> Back_to_INIT
     FORCED_ESCAPED --> Back_to_INIT
     FORCED_COMPLETED --> Back_to_INIT
 ```
