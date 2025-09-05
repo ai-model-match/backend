@@ -18,20 +18,27 @@ func (r getRolloutStrategyInputDto) validate() error {
 }
 
 type updateRolloutStrategyInputDto struct {
-	UseCaseID     string            `uri:"useCaseId"`
-	RolloutState  *string           `json:"state"`
-	Configuration *rsConfigInputDto `json:"configuration"`
+	UseCaseID     string           `uri:"useCaseId"`
+	Configuration rsConfigInputDto `json:"configuration"`
 }
 
 func (r updateRolloutStrategyInputDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
-		validation.Field(&r.RolloutState, validation.In(mm_utils.TransformToStrings(mm_pubsub.AvailableRolloutState)...)),
-		validation.Field(&r.Configuration, validation.When(r.RolloutState != nil, validation.Nil.Error("not allowed during State update")), validation.By(func(v interface{}) error {
-			if mm_utils.IsEmpty(v) {
-				return nil
-			}
-			return v.(*rsConfigInputDto).validate()
+		validation.Field(&r.Configuration, validation.By(func(v interface{}) error {
+			return v.(rsConfigInputDto).validate()
 		})),
+	)
+}
+
+type updateRolloutStrategyStatusInputDto struct {
+	UseCaseID    string `uri:"useCaseId"`
+	RolloutState string `json:"state"`
+}
+
+func (r updateRolloutStrategyStatusInputDto) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
+		validation.Field(&r.RolloutState, validation.Required, validation.In(mm_utils.TransformToStrings(mm_pubsub.AvailableRolloutState)...)),
 	)
 }

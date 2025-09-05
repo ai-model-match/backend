@@ -73,20 +73,46 @@ func (r rolloutStrategyRouter) register(router *gin.RouterGroup) {
 				return
 			}
 			// Business Logic
-			item, err := r.service.updateRolloutStrategy(ctx, request)
+			item, err := r.service.updateRolloutStrategyConfig(ctx, request)
 			if err == errRolloutStrategyNotFound {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return
 			}
-			if err == errRolloutStrategyWrongConfigFormat {
+			if err == errRolloutStrategyNotEditableWhileActive {
 				mm_router.ReturnBadRequestError(ctx, err)
+				return
+			}
+			// Errors and output handler
+			if err != nil {
+				zap.L().Error("Something went wrong", zap.String("service", "rollout-strategy-router"), zap.Error(err))
+				mm_router.ReturnGenericError(ctx)
+				return
+			}
+			mm_router.ReturnOk(ctx, &gin.H{"item": item})
+		})
+
+	router.PUT(
+		"/use-cases/:useCaseId/rollout-strategy/state",
+		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		func(ctx *gin.Context) {
+			// Input validation
+			var request updateRolloutStrategyStatusInputDto
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			if err := request.validate(); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			// Business Logic
+			item, err := r.service.updateRolloutStrategyState(ctx, request)
+			if err == errRolloutStrategyNotFound {
+				mm_router.ReturnNotFoundError(ctx, err)
 				return
 			}
 			if err == errRolloutStrategyTransitionStateNotAllowed {
-				mm_router.ReturnBadRequestError(ctx, err)
-				return
-			}
-			if err == errRolloutStrategyNotEditableWhileActive {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}

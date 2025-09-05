@@ -15,7 +15,8 @@ import (
 type rolloutStrategyServiceInterface interface {
 	getRolloutStrategyByUseCaseID(ctx *gin.Context, input getRolloutStrategyInputDto) (rolloutStrategyEntity, error)
 	createRolloutStrategy(useCaseID uuid.UUID) (rolloutStrategyEntity, error)
-	updateRolloutStrategy(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error)
+	updateRolloutStrategyConfig(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error)
+	updateRolloutStrategyState(ctx *gin.Context, input updateRolloutStrategyStatusInputDto) (rolloutStrategyEntity, error)
 }
 
 type rolloutStrategyService struct {
@@ -116,7 +117,7 @@ func (s rolloutStrategyService) createRolloutStrategy(useCaseID uuid.UUID) (roll
 	return newRolloutStrategy, nil
 }
 
-func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error) {
+func (s rolloutStrategyService) updateRolloutStrategyConfig(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error) {
 	now := time.Now()
 	var updatedRolloutStrategy rolloutStrategyEntity
 	eventsToPublish := []mm_pubsub.EventToPublish{}
@@ -132,48 +133,88 @@ func (s rolloutStrategyService) updateRolloutStrategy(ctx *gin.Context, input up
 			updatedRolloutStrategy = currentRolloutStrategy
 		}
 		// Avoid change configuration with Rollout State different from INIT
-		if input.Configuration != nil && updatedRolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
+		if updatedRolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
 			return errRolloutStrategyNotEditableWhileActive
 		}
-		// Check request to change Rollout state
-		if input.RolloutState != nil {
-			// Check the flow, if cna be move to next state
-			if ok := checkStateFlow(updatedRolloutStrategy.RolloutState, mm_pubsub.RolloutState(*input.RolloutState)); ok {
-				updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutState(*input.RolloutState)
-			} else {
-				return errRolloutStrategyTransitionStateNotAllowed
-			}
-			// Now, if we are activating Rollout Strategy (from INIT to WARMUP), but there is no warmup config, move to ADAPT
-			if updatedRolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(updatedRolloutStrategy.Configuration.Warmup) {
-				updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
+		// Round decimals on percentages for Warmup
+		if !mm_utils.IsEmpty(input.Configuration.Warmup) {
+			for i := range input.Configuration.Warmup.Goals {
+				input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Warmup.Goals[i].FinalServePct))
 			}
 		}
-		// Check request to change Rollout configuration
-		if input.Configuration != nil {
-			// not allowed if the state is not INIT
-			if updatedRolloutStrategy.RolloutState != mm_pubsub.RolloutStateInit {
-				return errRolloutStrategyTransitionStateNotAllowed
-			}
-			// Round decimals on percentages for Warmup
-			if !mm_utils.IsEmpty(input.Configuration.Warmup) {
-				for i := range input.Configuration.Warmup.Goals {
-					input.Configuration.Warmup.Goals[i].FinalServePct = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Warmup.Goals[i].FinalServePct))
+		// Round decimals on percentages for Escape
+		if !mm_utils.IsEmpty(input.Configuration.Escape) {
+			for i := range input.Configuration.Escape.Rules {
+				input.Configuration.Escape.Rules[i].LowerScore = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Escape.Rules[i].LowerScore))
+				for j := range input.Configuration.Escape.Rules[i].Rollback {
+					input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
 				}
 			}
-			// Round decimals on percentages for Escape
-			if !mm_utils.IsEmpty(input.Configuration.Escape) {
-				for i := range input.Configuration.Escape.Rules {
-					input.Configuration.Escape.Rules[i].LowerScore = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Escape.Rules[i].LowerScore))
-					for j := range input.Configuration.Escape.Rules[i].Rollback {
-						input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct = (mm_utils.RoundTo2DecimalsPtr(input.Configuration.Escape.Rules[i].Rollback[j].FinalServePct))
-					}
-				}
-			}
-			// Round decimals on percentages for Adaptive
-			input.Configuration.Adaptive.MaxStepPct = (mm_utils.RoundTo2Decimals(input.Configuration.Adaptive.MaxStepPct))
+		}
+		// Round decimals on percentages for Adaptive
+		input.Configuration.Adaptive.MaxStepPct = (mm_utils.RoundTo2Decimals(input.Configuration.Adaptive.MaxStepPct))
+		// Update the configuration
+		updatedRolloutStrategy.Configuration = input.Configuration.toEntity()
+		// Save Rollout Strategy
+		updatedRolloutStrategy.UpdatedAt = now
+		if _, err := s.repository.saveRolloutStrategy(tx, updatedRolloutStrategy, mm_db.Update); err != nil {
+			return mm_err.ErrGeneric
+		}
+		// Send an event of Rollout Straregy updated
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRolloutStrategyV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.RolloutStrategyUpdatedEvent,
+				EventEntity: &mm_pubsub.RolloutStrategyEventEntity{
+					ID:            updatedRolloutStrategy.ID,
+					UseCaseID:     updatedRolloutStrategy.UseCaseID,
+					RolloutState:  updatedRolloutStrategy.RolloutState,
+					Configuration: updatedRolloutStrategy.Configuration,
+					CreatedAt:     updatedRolloutStrategy.CreatedAt,
+					UpdatedAt:     updatedRolloutStrategy.UpdatedAt,
+				},
+				EventChangedFields: mm_utils.DiffStructs(currentRolloutStrategy, updatedRolloutStrategy),
+			},
+		}); err != nil {
+			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return rolloutStrategyEntity{}, errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
+	}
+	return updatedRolloutStrategy, nil
+}
 
-			// Update the configuration
-			updatedRolloutStrategy.Configuration = input.Configuration.toEntity()
+func (s rolloutStrategyService) updateRolloutStrategyState(ctx *gin.Context, input updateRolloutStrategyStatusInputDto) (rolloutStrategyEntity, error) {
+	now := time.Now()
+	var updatedRolloutStrategy rolloutStrategyEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		// Check if the use Case exists
+		useCaseID := uuid.MustParse(input.UseCaseID)
+		currentRolloutStrategy, err := s.repository.getRolloutStrategyByUseCaseID(tx, useCaseID, true)
+		if err != nil {
+			return mm_err.ErrGeneric
+		} else if mm_utils.IsEmpty(currentRolloutStrategy) {
+			return errRolloutStrategyNotFound
+		} else {
+			updatedRolloutStrategy = currentRolloutStrategy
+		}
+		// Check the flow, if can move to next state
+		if ok := checkStateFlow(updatedRolloutStrategy.RolloutState, mm_pubsub.RolloutState(input.RolloutState)); ok {
+			updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutState(input.RolloutState)
+		} else {
+			return errRolloutStrategyTransitionStateNotAllowed
+		}
+		// Now, if we are activating Rollout Strategy (from INIT to WARMUP), but there is no warmup config, move to ADAPT
+		if updatedRolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(updatedRolloutStrategy.Configuration.Warmup) {
+			updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
 		}
 		// Save Rollout Strategy
 		updatedRolloutStrategy.UpdatedAt = now
