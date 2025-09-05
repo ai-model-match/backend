@@ -32,13 +32,15 @@ func (r updateRolloutStrategyInputDto) validate() error {
 }
 
 type updateRolloutStrategyStatusInputDto struct {
-	UseCaseID    string `uri:"useCaseId"`
-	RolloutState string `json:"state"`
+	UseCaseID       string  `uri:"useCaseId"`
+	RolloutState    string  `json:"state"`
+	CompletedFlowID *string `json:"completedFlowId"`
 }
 
 func (r updateRolloutStrategyStatusInputDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
 		validation.Field(&r.RolloutState, validation.Required, validation.In(mm_utils.TransformToStrings(mm_pubsub.AvailableRolloutState)...)),
+		validation.Field(&r.CompletedFlowID, is.UUID, validation.NilOrNotEmpty, validation.When(r.RolloutState == string(mm_pubsub.RolloutStateForcedCompleted), validation.Required)),
 	)
 }

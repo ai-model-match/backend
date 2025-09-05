@@ -222,53 +222,85 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 		UpdatedAt:     event.UpdatedAt,
 	}
 	// If the RS is not in the FORCED_ESCAPED, skip it
-	if rs.RolloutState != mm_pubsub.RolloutStateForcedEscaped {
-		return nil
-	}
-	// If the Escape configuration is not defined, skip it
-	if rs.Configuration.Escape == nil {
-		return nil
-	}
-	// Start transaction
-	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
-		// Representation of Escape rules (FlowID --> Escape Rule)
-		indexedRules := map[string]mm_pubsub.RsEscapeRule{}
-		for _, rule := range rs.Configuration.Escape.Rules {
-			indexedRules[rule.FlowID.String()] = rule
+	if rs.RolloutState == mm_pubsub.RolloutStateForcedEscaped {
+		// If the Escape configuration is not defined, skip it
+		if rs.Configuration.Escape == nil {
+			return nil
 		}
-		// Retrieve all active Flows for the Use Case
-		flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
-		if err != nil {
-			return err
-		}
-		for _, flow := range flows {
-			// Per each flow check if there is an explicit Rule for Escape
-			if rule, ok := indexedRules[flow.ID.String()]; ok {
-				// Representation of Escape rules (FlowID --> Escape Rule)
-				indexedRollback := map[string]mm_pubsub.RsEscapeRollback{}
-				for _, rb := range rule.Rollback {
-					indexedRollback[rb.FlowID.String()] = rb
-				}
-				// Adapt all Flows to the Rollback PCTs
-				for _, f := range flows {
-					// For each active Flow check if there is a Rollback rule that
-					// determine the final Pct, otherwise set to 0
-					if rb, ok := indexedRollback[f.ID.String()]; ok {
-						f.CurrentServePct = &rb.FinalServePct
-					} else {
-						f.CurrentServePct = mm_utils.Float64Ptr(0)
-					}
-					f.UpdatedAt = time.Now()
-					s.repository.saveFlow(tx, f, mm_db.Update)
-				}
-				break
+		// Start transaction
+		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+			// Representation of Escape rules (FlowID --> Escape Rule)
+			indexedRules := map[string]mm_pubsub.RsEscapeRule{}
+			for _, rule := range rs.Configuration.Escape.Rules {
+				indexedRules[rule.FlowID.String()] = rule
 			}
+			// Retrieve all active Flows for the Use Case
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			if err != nil {
+				return err
+			}
+			for _, flow := range flows {
+				// Per each flow check if there is an explicit Rule for Escape
+				if rule, ok := indexedRules[flow.ID.String()]; ok {
+					// Representation of Escape rules (FlowID --> Escape Rule)
+					indexedRollback := map[string]mm_pubsub.RsEscapeRollback{}
+					for _, rb := range rule.Rollback {
+						indexedRollback[rb.FlowID.String()] = rb
+					}
+					// Adapt all Flows to the Rollback PCTs
+					for _, f := range flows {
+						// For each active Flow check if there is a Rollback rule that
+						// determine the final Pct, otherwise set to 0
+						if rb, ok := indexedRollback[f.ID.String()]; ok {
+							f.CurrentServePct = &rb.FinalServePct
+						} else {
+							f.CurrentServePct = mm_utils.Float64Ptr(0)
+						}
+						f.UpdatedAt = time.Now()
+						s.repository.saveFlow(tx, f, mm_db.Update)
+					}
+					break
+				}
+			}
+			return nil
+		})
+		if errTransaction != nil {
+			return errTransaction
 		}
-		return nil
-	})
-	if errTransaction != nil {
-		return errTransaction
 	}
+	// If the RS is not in the FORCED_ESCAPED, skip it
+	if rs.RolloutState == mm_pubsub.RolloutStateForcedCompleted {
+		// If the Escape configuration is not defined, skip it
+		if rs.Configuration.StateConfigurations.CompletedFlowID == nil {
+			return nil
+		}
+		// Start transaction
+		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+			forcedFlowID := *rs.Configuration.StateConfigurations.CompletedFlowID
+
+			// Retrieve all active Flows for the Use Case
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			if err != nil {
+				return err
+			}
+			// Per each flow, if equal to the forced Flow, put to 100%, otherwise to 0%
+			for _, flow := range flows {
+				if flow.ID == forcedFlowID {
+					flow.CurrentServePct = mm_utils.Float64Ptr(100)
+				} else {
+					flow.CurrentServePct = mm_utils.Float64Ptr(0)
+				}
+				flow.UpdatedAt = time.Now()
+				s.repository.saveFlow(tx, flow, mm_db.Update)
+
+			}
+			return nil
+		})
+		if errTransaction != nil {
+			return errTransaction
+		}
+	}
+
 	return nil
 }
 

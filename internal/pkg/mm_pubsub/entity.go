@@ -76,9 +76,14 @@ type RolloutStrategyEventEntity struct {
 }
 
 type RSConfiguration struct {
-	Warmup   *RsWarmupPhase  `json:"warmup"`
-	Escape   *RsEscapePhase  `json:"escape"`
-	Adaptive RsAdaptivePhase `json:"adaptive"`
+	Warmup              *RsWarmupPhase      `json:"warmup"`
+	Escape              *RsEscapePhase      `json:"escape"`
+	Adaptive            RsAdaptivePhase     `json:"adaptive"`
+	StateConfigurations StateConfigurations `json:"state_configs"`
+}
+
+type StateConfigurations struct {
+	CompletedFlowID *uuid.UUID `json:"completed_flow_id"`
 }
 
 type RsWarmupPhase struct {

@@ -216,6 +216,17 @@ func (s rolloutStrategyService) updateRolloutStrategyState(ctx *gin.Context, inp
 		if updatedRolloutStrategy.RolloutState == mm_pubsub.RolloutStateWarmup && mm_utils.IsEmpty(updatedRolloutStrategy.Configuration.Warmup) {
 			updatedRolloutStrategy.RolloutState = mm_pubsub.RolloutStateAdaptive
 		}
+		// Now check the status, if it moved to FORCED_COMPLETED, add in configuration the Flow ID, otherwise cleanup it
+		if updatedRolloutStrategy.RolloutState == mm_pubsub.RolloutStateForcedCompleted {
+			completedFlowID := mm_utils.GetUUIDFromString(*input.CompletedFlowID)
+			updatedRolloutStrategy.Configuration.StateConfigurations = mm_pubsub.StateConfigurations{
+				CompletedFlowID: &completedFlowID,
+			}
+		} else {
+			// CleanUp fields
+			updatedRolloutStrategy.Configuration.StateConfigurations = mm_pubsub.StateConfigurations{}
+		}
+
 		// Save Rollout Strategy
 		updatedRolloutStrategy.UpdatedAt = now
 		if _, err := s.repository.saveRolloutStrategy(tx, updatedRolloutStrategy, mm_db.Update); err != nil {
