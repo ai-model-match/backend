@@ -16,7 +16,7 @@ type useCaseRepositoryInterface interface {
 	getUseCaseByCode(tx *gorm.DB, useCaseCode string, forUpdate bool) (useCaseEntity, error)
 	saveUseCase(tx *gorm.DB, useCase useCaseEntity, operation mm_db.SaveOperation) (useCaseEntity, error)
 	deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (useCaseEntity, error)
-	checkFallbackFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
+	checkActiveFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
 }
 
 type useCaseRepository struct {
@@ -126,9 +126,9 @@ func (r useCaseRepository) deleteUseCase(tx *gorm.DB, useCase useCaseEntity) (us
 	return useCase, nil
 }
 
-func (r useCaseRepository) checkFallbackFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error) {
+func (r useCaseRepository) checkActiveFlowExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error) {
 	var model *flowModel
-	query := tx.Where("use_case_id = ?", useCaseID).Where("fallback is true")
+	query := tx.Where("use_case_id = ?", useCaseID).Where("active IS TRUE")
 	result := query.Limit(1).Find(&model)
 	if result.Error != nil {
 		return false, result.Error

@@ -38,7 +38,6 @@ type flowModel struct {
 	ID              uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
 	UseCaseID       uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
 	Active          bool      `gorm:"column:active;type:bool"`
-	Fallback        bool      `gorm:"column:fallback;type:bool"`
 	CurrentServePct float64   `gorm:"column:current_pct;type:double precision"`
 }
 
@@ -71,7 +70,6 @@ type pickerCorrelationModel struct {
 	ID        uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
 	UseCaseID uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
 	FlowID    uuid.UUID `gorm:"column:flow_id;type:varchar(36)"`
-	Fallback  bool      `gorm:"column:fallback;type:bool"`
 	CreatedAt time.Time `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
 }
 
@@ -91,7 +89,6 @@ type pickerRequestModel struct {
 	FlowStepID         uuid.UUID       `gorm:"column:flow_step_id;type:varchar(36)"`
 	CorrelationID      uuid.UUID       `gorm:"column:correlation_id;type:varchar(36)"`
 	IsFirstCorrelation *bool           `gorm:"column:is_first_correlation;type:bool"`
-	IsFallback         *bool           `gorm:"column:is_fallback;type:bool"`
 	InputMessage       json.RawMessage `gorm:"column:input_message;type:json"`
 	OutputMessage      json.RawMessage `gorm:"column:output_message;type:json"`
 	Placeholders       json.RawMessage `gorm:"column:placeholders;type:json"`

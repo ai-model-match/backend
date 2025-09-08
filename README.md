@@ -9,16 +9,18 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 ### Use Case Rules
 - You cannot have two Use Cases with the same code.
 - You cannot delete an active Use Case.
-- You cannot activate a Use Case if it does not have an associated fallback Flow.
+- You cannot activate a Use Case if it does not have at least one associated active Flow.
 - You can add, edit, or delete Use Case Steps even if the Use Case is active (caution).
 - You cannot have the same code associated to two or more Use Case Steps associated to the same Use Case.
 - An active Use Case indicates that it can receive incoming requests.
 
 ### Flow Rules
-- You cannot delete a Flow that is marked as Fallback if it is related to an active Use Case.
-- You cannot unmark a Flow as Fallback if it is related to an active Use Case.
 - An active Flow is considered an available Flow to serve incoming requests.
-- If any Flow is available or any Flow is picked to serve an incoming request, the fallback Flow will be used, even if not active.
+- You cannot delete an active Flow. To delete it, deactivate first.
+- You cannot deactivate the last active Flow associated to an active Use Case.
+- If you activate the first Flow, indipendently of its Pct, it will be set to 100%.
+- If you activate a Flow with a specific Pct, other active Flows will be adapted to cover 100% (equally distributed).
+- If you deactivate a Flow that served a specific Pct, other active Flows will be adapted to cover 100% (equally distributed).
 
 ### Picker Rules
 - You cannot send a request to a not active Use Case.

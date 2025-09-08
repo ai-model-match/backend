@@ -10,7 +10,6 @@ type pickerCorrelationModel struct {
 	ID        uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
 	UseCaseID uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
 	FlowID    uuid.UUID `gorm:"column:flow_id;type:varchar(36)"`
-	Fallback  bool      `gorm:"column:fallback;type:bool"`
 	CreatedAt time.Time `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
 }
 

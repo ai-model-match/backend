@@ -56,7 +56,6 @@ type updateFlowInputDto struct {
 	Title           *string  `json:"title"`
 	Description     *string  `json:"description"`
 	Active          *bool    `json:"active"`
-	Fallback        *bool    `json:"fallback"`
 	CurrentServePct *float64 `json:"currentServePct"`
 }
 
@@ -66,7 +65,6 @@ func (r updateFlowInputDto) validate() error {
 		validation.Field(&r.Title, validation.NilOrNotEmpty, validation.Length(1, 255)),
 		validation.Field(&r.Description, validation.NilOrNotEmpty),
 		validation.Field(&r.Active, validation.In(true, false)),
-		validation.Field(&r.Fallback, validation.In(true, false)),
 		validation.Field(&r.CurrentServePct, validation.Min(0.0), validation.Max(100.0)),
 	)
 }

@@ -1,6 +1,7 @@
 package flow
 
 import (
+	"math"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -71,7 +72,6 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 		Active:          mm_utils.BoolPtr(false),
 		Title:           input.Title,
 		Description:     input.Description,
-		Fallback:        mm_utils.BoolPtr(false),
 		CurrentServePct: mm_utils.Float64Ptr(0),
 		CreatedAt:       now,
 		UpdatedAt:       now,
@@ -100,7 +100,6 @@ func (s flowService) createFlow(ctx *gin.Context, input createFlowInputDto) (flo
 					Active:          newFlow.Active,
 					Title:           newFlow.Title,
 					Description:     newFlow.Description,
-					Fallback:        newFlow.Fallback,
 					CurrentServePct: newFlow.CurrentServePct,
 					CreatedAt:       newFlow.CreatedAt,
 					UpdatedAt:       newFlow.UpdatedAt,
@@ -145,31 +144,40 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 		if input.Description != nil {
 			updatedFlow.Description = *input.Description
 		}
-		if input.Active != nil {
-			updatedFlow.Active = input.Active
-		}
-		if input.Fallback != nil {
-			// If you are trying to remove the fallback, cannot be done if the use case is active
-			if *updatedFlow.Fallback && !*input.Fallback {
-				if isActive, err := s.repository.checkUseCaseIsActive(tx, updatedFlow.UseCaseID); err != nil {
-					return err
-				} else if isActive {
-					return errFlowCannotRemoveFallbackWithActiveUseCase
-				}
-			}
-			updatedFlow.Fallback = input.Fallback
-		}
 		if input.CurrentServePct != nil {
 			updatedFlow.CurrentServePct = mm_utils.RoundTo2DecimalsPtr(input.CurrentServePct)
 		}
-		if _, err = s.repository.saveFlow(tx, updatedFlow, mm_db.Update); err != nil {
+		if input.Active != nil {
+			// If you are trying to deactivate the flow, we need to guarantee that there is at least one active Flow associated to
+			// the active Use Case, otherwise return an error
+			if *updatedFlow.Active && !*input.Active {
+				if isActive, err := s.repository.checkUseCaseIsActive(tx, updatedFlow.UseCaseID); err != nil {
+					return err
+				} else if isActive {
+					if lastActive, err := s.repository.checkFlowIsLastActive(tx, currentFlow.UseCaseID, currentFlow.ID); err != nil {
+						return err
+					} else if lastActive {
+						return errFlowCannotBeDeactivatedIfLastActive
+					}
+				}
+			}
+			updatedFlow.Active = input.Active
+		}
+
+		// Retrieve all the Active Flows
+		existingActiveFlows, err := s.repository.getAllActiveFlow(tx, updatedFlow.UseCaseID, true)
+		if err != nil {
 			return mm_err.ErrGeneric
 		}
-		// If this flow is the fallback one, remove fallback from others if any
-		if *updatedFlow.Fallback {
-			if err = s.repository.makeFallbackConsistent(tx, updatedFlow); err != nil {
-				return mm_err.ErrGeneric
+		// If this Flow is active and there is not any other active Flow, or this one is the only active, force its PCT to 100%.
+		if *updatedFlow.Active {
+			if len(existingActiveFlows) == 0 || (len(existingActiveFlows) == 1 && existingActiveFlows[0].ID == updatedFlow.ID) {
+				updatedFlow.CurrentServePct = mm_utils.Float64Ptr(100)
 			}
+		}
+		// Save the updated Flow
+		if _, err = s.repository.saveFlow(tx, updatedFlow, mm_db.Update); err != nil {
+			return mm_err.ErrGeneric
 		}
 		// Send an event of flow updated
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
@@ -183,7 +191,6 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 					Active:          updatedFlow.Active,
 					Title:           updatedFlow.Title,
 					Description:     updatedFlow.Description,
-					Fallback:        updatedFlow.Fallback,
 					CurrentServePct: updatedFlow.CurrentServePct,
 					CreatedAt:       updatedFlow.CreatedAt,
 					UpdatedAt:       updatedFlow.UpdatedAt,
@@ -195,6 +202,66 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 		} else {
 			eventsToPublish = append(eventsToPublish, event)
 		}
+
+		// Calculate the missing target for all other active Flows (excluding this one)
+		target := 100.0
+		if *updatedFlow.Active {
+			target -= *updatedFlow.CurrentServePct
+		}
+
+		// Calculate how much traffic current active flows (excluding this one) are serving
+		covered := 0.0
+		for _, existingFlow := range existingActiveFlows {
+			if existingFlow.ID == updatedFlow.ID {
+				continue
+			}
+			if *existingFlow.CurrentServePct == 0.0 {
+				covered += math.SmallestNonzeroFloat64
+			} else {
+				covered += *existingFlow.CurrentServePct
+			}
+		}
+		// Now calculate the new PCT to serve per each other active Flow
+		for _, existingFlow := range existingActiveFlows {
+			if existingFlow.ID == updatedFlow.ID {
+				continue
+			}
+			updatedExistingFlow := existingFlow
+			if *updatedExistingFlow.CurrentServePct == 0 {
+				updatedExistingFlow.CurrentServePct = mm_utils.Float64Ptr(math.SmallestNonzeroFloat64)
+			}
+			newPct := mm_utils.RoundTo2Decimals(*updatedExistingFlow.CurrentServePct * target / covered)
+			updatedExistingFlow.CurrentServePct = &newPct
+			updatedExistingFlow.UpdatedAt = time.Now()
+			// Save the new PCT of the Flow
+			if _, err = s.repository.saveFlow(tx, updatedExistingFlow, mm_db.Update); err != nil {
+				return mm_err.ErrGeneric
+			}
+			// Send an event of flow updated
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+				Message: mm_pubsub.PubSubEvent{
+					EventID:   uuid.New(),
+					EventTime: time.Now(),
+					EventType: mm_pubsub.FlowUpdatedEvent,
+					EventEntity: &mm_pubsub.FlowEventEntity{
+						ID:              updatedExistingFlow.ID,
+						UseCaseID:       updatedExistingFlow.UseCaseID,
+						Active:          updatedExistingFlow.Active,
+						Title:           updatedExistingFlow.Title,
+						Description:     updatedExistingFlow.Description,
+						CurrentServePct: updatedExistingFlow.CurrentServePct,
+						CreatedAt:       updatedExistingFlow.CreatedAt,
+						UpdatedAt:       updatedExistingFlow.UpdatedAt,
+					},
+					EventChangedFields: mm_utils.DiffStructs(existingFlow, updatedExistingFlow),
+				},
+			}); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
+			}
+		}
+
 		return nil
 	})
 	if errTransaction != nil {
@@ -217,13 +284,9 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 		if mm_utils.IsEmpty(currentFlow) {
 			return errFlowNotFound
 		}
-		// Avoid to delete a Flow if it is a fallback and the use case is active
-		if *currentFlow.Fallback {
-			if isActive, err := s.repository.checkUseCaseIsActive(tx, currentFlow.UseCaseID); err != nil {
-				return err
-			} else if isActive {
-				return errFlowCannotDeleteIfFallbackAndUseCaseActive
-			}
+		// Avoid to delete a Flow if it is active
+		if *currentFlow.Active {
+			return errFlowCannotBeDeletedIfActive
 		}
 		if _, err := s.repository.deleteFlow(tx, currentFlow); err != nil {
 			return mm_err.ErrGeneric
@@ -240,7 +303,6 @@ func (s flowService) deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flo
 					Active:          currentFlow.Active,
 					Title:           currentFlow.Title,
 					Description:     currentFlow.Description,
-					Fallback:        currentFlow.Fallback,
 					CurrentServePct: currentFlow.CurrentServePct,
 					CreatedAt:       currentFlow.CreatedAt,
 					UpdatedAt:       currentFlow.UpdatedAt,
@@ -283,7 +345,6 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 			Active:          mm_utils.BoolPtr(false),
 			Title:           input.NewTitle,
 			Description:     item.Description,
-			Fallback:        mm_utils.BoolPtr(false),
 			CurrentServePct: mm_utils.Float64Ptr(0),
 			CreatedAt:       now,
 			UpdatedAt:       now,
@@ -304,7 +365,6 @@ func (s flowService) cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowE
 					Active:          newFlow.Active,
 					Title:           newFlow.Title,
 					Description:     newFlow.Description,
-					Fallback:        newFlow.Fallback,
 					CurrentServePct: newFlow.CurrentServePct,
 					CreatedAt:       newFlow.CreatedAt,
 					UpdatedAt:       newFlow.UpdatedAt,

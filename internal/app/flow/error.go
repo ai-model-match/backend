@@ -4,5 +4,5 @@ import "errors"
 
 var errUseCaseNotFound = errors.New("use-case-not-found")
 var errFlowNotFound = errors.New("flow-not-found")
-var errFlowCannotDeleteIfFallbackAndUseCaseActive = errors.New("flow-cannot-delete-if-fallback-and-use-case-active")
-var errFlowCannotRemoveFallbackWithActiveUseCase = errors.New("flow-cannot-remove-fallback-with-active-use-case")
+var errFlowCannotBeDeletedIfActive = errors.New("flow-cannot-be-deleted-if-active")
+var errFlowCannotBeDeactivatedIfLastActive = errors.New("flow-cannot-be-deactivated-if-last-active")

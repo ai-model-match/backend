@@ -12,7 +12,6 @@ type flowEntity struct {
 	Title           string     `json:"title"`
 	Description     string     `json:"description"`
 	Active          *bool      `json:"active"`
-	Fallback        *bool      `json:"fallback"`
 	CurrentServePct *float64   `json:"currentServePct"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`

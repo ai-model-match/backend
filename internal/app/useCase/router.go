@@ -146,7 +146,7 @@ func (r useCaseRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}
-			if err == errUseCaseCannotBeActivatedWithoutFallbackFlow {
+			if err == errUseCaseCannotBeActivatedWithoutActiveFlow {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}

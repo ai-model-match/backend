@@ -151,14 +151,14 @@ func (s useCaseService) updateUseCase(ctx *gin.Context, input updateUseCaseInput
 			updatedUseCase.Code = *input.Code
 		}
 		if input.Active != nil {
-			// Avoid activating Use Case if there isn't any Fallback Flow
+			// Avoid activating Use Case if there isn't any Active Flow
 			if !*updatedUseCase.Active && *input.Active {
-				fallbackExists, err := s.repository.checkFallbackFlowExists(tx, updatedUseCase.ID)
+				activeFlowExists, err := s.repository.checkActiveFlowExists(tx, updatedUseCase.ID)
 				if err != nil {
 					return mm_err.ErrGeneric
 				}
-				if !fallbackExists {
-					return errUseCaseCannotBeActivatedWithoutFallbackFlow
+				if !activeFlowExists {
+					return errUseCaseCannotBeActivatedWithoutActiveFlow
 				}
 			}
 			updatedUseCase.Active = input.Active

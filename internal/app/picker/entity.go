@@ -23,7 +23,6 @@ type flowEntity struct {
 	ID              uuid.UUID
 	UseCaseID       uuid.UUID
 	Active          bool
-	Fallback        bool
 	CurrentServePct float64
 }
 
@@ -40,7 +39,6 @@ type pickerCorrelationEntity struct {
 	ID        uuid.UUID
 	UseCaseID uuid.UUID
 	FlowID    uuid.UUID
-	Fallback  bool
 	CreatedAt time.Time
 }
 

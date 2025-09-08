@@ -3,7 +3,6 @@ package picker
 import (
 	"encoding/json"
 	"math/rand/v2"
-	"slices"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -38,11 +37,9 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 	var useCaseStep useCaseStepEntity
 	var correlation pickerCorrelationEntity
 	var availableFlows []flowEntity
-	var fallbackFlow flowEntity
 	var selectedFlow flowEntity
 	var selectedFlowStep flowStepEntity
 	var newPickedEntity pickerEntity
-	var isFallback bool = false
 	var isFirstCorrelation bool = false
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	// Check Use Case exists by its code
@@ -71,7 +68,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			return pickerEntity{}, errCorrelationConflict
 		}
 		correlation = item
-		isFallback = correlation.Fallback
 	}
 	if !mm_utils.IsEmpty(correlation) {
 		// If correlation found, we have immediately the Flow
@@ -89,14 +85,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 		} else if len(items) == 0 {
 			return pickerEntity{}, errFlowsNotAvailable
 		} else {
-			// Find the flow that is marked as fallback (raise error if not found)
-			if index := slices.IndexFunc(items, func(item flowEntity) bool {
-				return item.Fallback
-			}); index == -1 {
-				return pickerEntity{}, errFallbackFlowNotAvailable
-			} else {
-				fallbackFlow = items[index]
-			}
 			// Prepare list of active Flows to consider
 			for _, item := range items {
 				if item.Active {
@@ -104,8 +92,8 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 				}
 			}
 		}
-		// We have all available Flows and the fallback one, given a random number,
-		// take the Flow to consider
+		// We have all available Flows that covers 100%.
+		// So given a random number, take the Flow to consider
 		r := rand.Float64() * 100
 		var cumulative float64
 		for i, f := range availableFlows {
@@ -114,11 +102,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 				selectedFlow = availableFlows[i]
 				break
 			}
-		}
-		// If no flow has been weight randomly selected, use the fallback one
-		if mm_utils.IsEmpty(selectedFlow) {
-			selectedFlow = fallbackFlow
-			isFallback = true
 		}
 	}
 	// Retrieve the Step of the selected Flow
@@ -138,7 +121,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 				ID:        mm_utils.GetUUIDFromString(input.CorrelationID),
 				UseCaseID: useCase.ID,
 				FlowID:    selectedFlow.ID,
-				Fallback:  isFallback,
 				CreatedAt: time.Now(),
 			}
 			if _, err := s.repository.saveCorrelation(s.storage, correlation, mm_db.Upsert); err != nil {
@@ -160,7 +142,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 			FlowStepID:         selectedFlowStep.ID,
 			CorrelationID:      mm_utils.GetUUIDFromString(input.CorrelationID),
 			IsFirstCorrelation: &isFirstCorrelation,
-			IsFallback:         &isFallback,
 			InputMessage:       inputMsg,
 			OutputMessage:      selectedFlowStep.Configuration,
 			Placeholders:       selectedFlowStep.Placeholders,
@@ -184,7 +165,6 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 					FlowStepID:         newPickedEntity.FlowStepID,
 					CorrelationID:      newPickedEntity.CorrelationID,
 					IsFirstCorrelation: newPickedEntity.IsFirstCorrelation,
-					IsFallback:         newPickedEntity.IsFallback,
 					InputMessage:       newPickedEntity.InputMessage,
 					OutputMessage:      newPickedEntity.OutputMessage,
 					Placeholders:       newPickedEntity.Placeholders,

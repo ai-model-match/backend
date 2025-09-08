@@ -34,7 +34,6 @@ type FlowEventEntity struct {
 	Title           string     `json:"title"`
 	Description     string     `json:"description"`
 	Active          *bool      `json:"active"`
-	Fallback        *bool      `json:"fallback"`
 	CurrentServePct *float64   `json:"currentServePct"`
 	CreatedAt       time.Time  `json:"createdAt"`
 	UpdatedAt       time.Time  `json:"updatedAt"`
@@ -127,7 +126,6 @@ type PickerEventEntity struct {
 	FlowStepID         uuid.UUID       `json:"flowStepId"`
 	CorrelationID      uuid.UUID       `json:"correlationId"`
 	IsFirstCorrelation *bool           `json:"IsFirstCorrelation"`
-	IsFallback         *bool           `json:"isFallback"`
 	InputMessage       json.RawMessage `json:"inputMessage"`
 	OutputMessage      json.RawMessage `json:"outputMessage"`
 	Placeholders       json.RawMessage `json:"placeholders"`

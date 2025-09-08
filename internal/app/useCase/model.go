@@ -28,7 +28,7 @@ func (m useCaseModel) toEntity() useCaseEntity {
 type flowModel struct {
 	ID        uuid.UUID `gorm:"primaryKey;column:id;type:varchar(36)"`
 	UseCaseID uuid.UUID `gorm:"column:use_case_id;type:varchar(36)"`
-	Fallback  *bool     `gorm:"column:fallback;type:boolean"`
+	Active    *bool     `gorm:"column:active;type:boolean"`
 }
 
 func (m flowModel) TableName() string {

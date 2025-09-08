@@ -146,7 +146,7 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return
 			}
-			if err == errFlowCannotRemoveFallbackWithActiveUseCase {
+			if err == errFlowCannotBeDeactivatedIfLastActive {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}
@@ -180,7 +180,7 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnNotFoundError(ctx, err)
 				return
 			}
-			if err == errFlowCannotDeleteIfFallbackAndUseCaseActive {
+			if err == errFlowCannotBeDeletedIfActive {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}

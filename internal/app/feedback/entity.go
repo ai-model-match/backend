@@ -13,6 +13,5 @@ type pickerCorrelationEntity struct {
 	ID        uuid.UUID
 	UseCaseID uuid.UUID
 	FlowID    uuid.UUID
-	Fallback  bool
 	CreatedAt time.Time
 }

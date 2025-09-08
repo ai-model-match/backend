@@ -13,12 +13,13 @@ import (
 type flowRepositoryInterface interface {
 	checkUseCaseExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
 	checkUseCaseIsActive(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
+	checkFlowIsLastActive(tx *gorm.DB, useCaseID uuid.UUID, flowID uuid.UUID) (bool, error)
 	listFlows(tx *gorm.DB, useCaseID uuid.UUID, limit int, offset int, orderBy flowOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]flowEntity, int64, error)
 	getFlowByID(tx *gorm.DB, flowID uuid.UUID, forUpdate bool) (flowEntity, error)
 	getFlowByCode(tx *gorm.DB, useCaseID uuid.UUID, flowCode string, forUpdate bool) (flowEntity, error)
+	getAllActiveFlow(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error)
 	saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error)
 	deleteFlow(tx *gorm.DB, flow flowEntity) (flowEntity, error)
-	makeFallbackConsistent(tx *gorm.DB, fallbackFlow flowEntity) error
 }
 
 type flowRepository struct {
@@ -55,6 +56,20 @@ func (r flowRepository) checkUseCaseIsActive(tx *gorm.DB, useCaseID uuid.UUID) (
 		return false, errUseCaseNotFound
 	}
 	return *model.Active, nil
+}
+
+func (r flowRepository) checkFlowIsLastActive(tx *gorm.DB, useCaseID uuid.UUID, flowID uuid.UUID) (bool, error) {
+	var model *flowModel
+	query := tx.Where("id != ?", flowID).Where("use_case_id = ?", useCaseID).Where("active IS TRUE")
+	result := query.Limit(1).Find(&model)
+	if result.Error != nil {
+		return false, result.Error
+	}
+	if result.RowsAffected == 0 || mm_utils.IsEmpty(model) {
+		return true, nil
+	}
+	// If there is another active flow, this one is not the last active
+	return false, nil
 }
 
 func (r flowRepository) listFlows(tx *gorm.DB, useCaseID uuid.UUID, limit int, offset int, orderBy flowOrderBy, orderDir mm_db.OrderDir, searchKey *string, forUpdate bool) ([]flowEntity, int64, error) {
@@ -128,6 +143,24 @@ func (r flowRepository) getFlowByCode(tx *gorm.DB, useCaseID uuid.UUID, flowCode
 	return model.toEntity(), nil
 }
 
+func (r flowRepository) getAllActiveFlow(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error) {
+	var models []*flowModel
+	query := tx.Model(flowModel{}).Where("use_case_id = ?", useCaseID).Where("active IS TRUE")
+	if forUpdate {
+		query.Clauses(clause.Locking{Strength: "UPDATE"})
+	}
+	result := query.Find(&models)
+	if result.Error != nil {
+		return []flowEntity{}, result.Error
+	}
+	var entities []flowEntity = []flowEntity{}
+	for _, model := range models {
+		entity := model.toEntity()
+		entities = append(entities, entity)
+	}
+	return entities, nil
+}
+
 func (r flowRepository) saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error) {
 	var model = flowModel(flow)
 	var err error
@@ -152,15 +185,4 @@ func (r flowRepository) deleteFlow(tx *gorm.DB, flow flowEntity) (flowEntity, er
 		return flowEntity{}, err
 	}
 	return flow, nil
-}
-
-func (r flowRepository) makeFallbackConsistent(tx *gorm.DB, fallbackFlow flowEntity) error {
-	err := tx.Model(&flowModel{}).
-		Where("use_case_id = ? AND id != ?", fallbackFlow.UseCaseID, fallbackFlow.ID).
-		Update("fallback", false).Error
-	if err != nil {
-		return err
-	}
-	return nil
-
 }

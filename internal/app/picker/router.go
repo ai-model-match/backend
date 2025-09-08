@@ -68,10 +68,6 @@ func (r pickerRouter) register(router *gin.RouterGroup) {
 				mm_router.ReturnBadRequestError(ctx, err)
 				return
 			}
-			if err == errFallbackFlowNotAvailable {
-				mm_router.ReturnBadRequestError(ctx, err)
-				return
-			}
 			// Errors and output handler
 			if err != nil {
 				zap.L().Error("Something went wrong", zap.String("service", "picker-router"), zap.Error(err))
