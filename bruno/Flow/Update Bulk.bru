@@ -1,0 +1,35 @@
+meta {
+  name: Update Bulk
+  type: http
+  seq: 7
+}
+
+put {
+  url: http://127.0.0.1:8001/api/v1/flows/bulk
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "useCaseId": "{{firstUseCaseId}}",
+    "flows": [{
+      "flowId": "2e706dbb-c371-47cd-9022-0ae581b968c5",
+      "currentServePct": 45
+    },{
+      "flowId": "9c7c09ce-f71a-433b-b3a8-9069849f21ec",
+      "currentServePct": 0
+    },{
+      "flowId": "597301d6-41ae-4d58-beff-88a6f6ec844c",
+      "currentServePct": 55
+    }]
+  }
+}
+
+settings {
+  encodeUrl: true
+}

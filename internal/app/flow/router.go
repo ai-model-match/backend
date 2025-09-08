@@ -222,4 +222,38 @@ func (r flowRouter) register(router *gin.RouterGroup) {
 			}
 			mm_router.ReturnOk(ctx, &gin.H{"item": item})
 		})
+
+	router.PUT(
+		"/flows/bulk",
+		mm_auth.AuthMiddleware([]string{mm_auth.READ, mm_auth.WRITE}),
+		mm_timeout.TimeoutMiddleware(time.Duration(1)*time.Second),
+		func(ctx *gin.Context) {
+			// Input validation
+			var request updateFlowPctBulkDto
+			if err := mm_router.BindParameters(ctx, &request); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			if err := request.validate(); err != nil {
+				mm_router.ReturnValidationError(ctx, err)
+				return
+			}
+			// Business Logic
+			items, err := r.service.updateFlowPctBulk(ctx, request)
+			if err == errUseCaseNotFound {
+				mm_router.ReturnNotFoundError(ctx, err)
+				return
+			}
+			if err == errActiveFlowNotFound {
+				mm_router.ReturnNotFoundError(ctx, err)
+				return
+			}
+			// Errors and output handler
+			if err != nil {
+				zap.L().Error("Something went wrong", zap.String("service", "flow-router"), zap.Error(err))
+				mm_router.ReturnGenericError(ctx)
+				return
+			}
+			mm_router.ReturnOk(ctx, &gin.H{"items": items, "totalCount": len(items), "hasNext": false})
+		})
 }

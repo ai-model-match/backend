@@ -1,6 +1,8 @@
 package flow
 
 import (
+	"errors"
+
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -88,5 +90,49 @@ func (r cloneFlowInputDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.ID, validation.Required, is.UUID),
 		validation.Field(&r.NewTitle, validation.NilOrNotEmpty, validation.Length(1, 255)),
+	)
+}
+
+type updateFlowPctBulkDto struct {
+	UseCaseID string             `json:"useCaseId"`
+	Flows     []updateFlowPctDto `json:"flows"`
+}
+
+func (r updateFlowPctBulkDto) validate() error {
+	if err := validation.ValidateStruct(&r,
+		validation.Field(&r.UseCaseID, validation.Required, is.UUID),
+		validation.Field(&r.Flows, validation.Required, validation.Length(1, 0), validation.Each(validation.By(func(value interface{}) error {
+			v := value.(updateFlowPctDto)
+			return v.validate()
+		})))); err != nil {
+		return err
+	}
+	// Check there is only one Flow per request and total PCT is 100%
+	seen := make(map[string]bool)
+	totPct := 0.0
+	for _, flow := range r.Flows {
+		if flow.CurrentServePct != nil {
+			totPct = totPct + *mm_utils.RoundTo2DecimalsPtr(flow.CurrentServePct)
+		}
+		if _, exists := seen[flow.FlowID]; exists {
+			return errors.New("serve PCT can have only one Flow associated")
+		}
+		seen[flow.FlowID] = true
+	}
+	if totPct != 100 {
+		return errors.New("flows need to reach exactly 100%")
+	}
+	return nil
+}
+
+type updateFlowPctDto struct {
+	FlowID          string   `json:"flowId"`
+	CurrentServePct *float64 `json:"currentServePct"`
+}
+
+func (r updateFlowPctDto) validate() error {
+	return validation.ValidateStruct(&r,
+		validation.Field(&r.FlowID, validation.Required, is.UUID),
+		validation.Field(&r.CurrentServePct, validation.When(r.CurrentServePct != nil, validation.Min(0.0), validation.Max(100.0))),
 	)
 }
