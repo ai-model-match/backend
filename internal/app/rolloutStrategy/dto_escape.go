@@ -64,7 +64,7 @@ func (r rsEscapeRuleDto) validate() error {
 	}
 	// Check there is only one goal per Flow
 	seen := make(map[string]bool)
-	totPct := float64(0)
+	totPct := 0.0
 	for _, rollback := range r.Rollback {
 		totPct = totPct + *mm_utils.RoundTo2DecimalsPtr(rollback.FinalServePct)
 		if _, exists := seen[rollback.FlowID]; exists {
@@ -99,7 +99,7 @@ type rsEscapeRollbackDto struct {
 func (r rsEscapeRollbackDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.FlowID, validation.Required, is.UUID),
-		validation.Field(&r.FinalServePct, validation.When(r.FinalServePct != nil, validation.Min(float64(0)), validation.Max(float64(100)))),
+		validation.Field(&r.FinalServePct, validation.When(r.FinalServePct != nil, validation.Min(0.0), validation.Max(100.0))),
 	)
 }
 
