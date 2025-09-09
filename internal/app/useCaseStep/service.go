@@ -80,6 +80,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 	}
 	eventsToPublish := []mm_pubsub.EventToPublish{}
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		var updatedPosEntities []useCaseStepEntity
 		if exists, err := s.repository.checkUseCaseExists(s.storage, useCaseID); err != nil {
 			return mm_err.ErrGeneric
 		} else if !exists {
@@ -91,7 +92,7 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 			return errUseCaseStepSameCodeAlreadyExists
 		} else if _, err = s.repository.saveUseCaseStep(tx, newUseCaseStep, mm_db.Create); err != nil {
 			return mm_err.ErrGeneric
-		} else if err := s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
+		} else if updatedPosEntities, err = s.repository.recalculateUseCaseStepPosition(tx, useCaseID); err != nil {
 			return mm_err.ErrGeneric
 		} else if newUseCaseStep, err = s.repository.getUseCaseStepByID(tx, newUseCaseStep.ID, false); err != nil {
 			return mm_err.ErrGeneric
@@ -118,6 +119,34 @@ func (s useCaseStepService) createUseCaseStep(ctx *gin.Context, input createUseC
 		} else {
 			eventsToPublish = append(eventsToPublish, event)
 		}
+		// For the list of updated entities in Position, send events
+		for _, updatedPosEntity := range updatedPosEntities {
+			if updatedPosEntity.ID == newUseCaseStep.ID {
+				continue
+			}
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+				Message: mm_pubsub.PubSubEvent{
+					EventID:   uuid.New(),
+					EventTime: time.Now(),
+					EventType: mm_pubsub.UseCaseStepUpdatedEvent,
+					EventEntity: &mm_pubsub.UseCaseStepEventEntity{
+						ID:          updatedPosEntity.ID,
+						UseCaseID:   updatedPosEntity.UseCaseID,
+						Title:       updatedPosEntity.Title,
+						Code:        updatedPosEntity.Code,
+						Description: updatedPosEntity.Description,
+						Position:    updatedPosEntity.Position,
+						CreatedAt:   updatedPosEntity.CreatedAt,
+						UpdatedAt:   updatedPosEntity.UpdatedAt,
+					},
+					EventChangedFields: []string{"Position", "UpdatedAt"},
+				},
+			}); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
+			}
+		}
 		return nil
 	})
 	if errTransaction != nil {
@@ -135,6 +164,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 		// Check if the use Case Step exists
 		useCaseStepID := uuid.MustParse(input.ID)
+		var updatedPosEntities []useCaseStepEntity
 		currentUseCaseStep, err := s.repository.getUseCaseStepByID(tx, useCaseStepID, true)
 		if err != nil {
 			return mm_err.ErrGeneric
@@ -175,7 +205,7 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		if _, err = s.repository.saveUseCaseStep(tx, updatedUseCaseStep, mm_db.Update); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.repository.recalculateUseCaseStepPosition(tx, updatedUseCaseStep.UseCaseID); err != nil {
+		if updatedPosEntities, err = s.repository.recalculateUseCaseStepPosition(tx, updatedUseCaseStep.UseCaseID); err != nil {
 			return mm_err.ErrGeneric
 		}
 		if updatedUseCaseStep, err = s.repository.getUseCaseStepByID(tx, updatedUseCaseStep.ID, false); err != nil {
@@ -204,6 +234,34 @@ func (s useCaseStepService) updateUseCaseStep(ctx *gin.Context, input updateUseC
 		} else {
 			eventsToPublish = append(eventsToPublish, event)
 		}
+		// For the list of updated entities in Position, send events
+		for _, updatedPosEntity := range updatedPosEntities {
+			if updatedPosEntity.ID == updatedUseCaseStep.ID {
+				continue
+			}
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+				Message: mm_pubsub.PubSubEvent{
+					EventID:   uuid.New(),
+					EventTime: time.Now(),
+					EventType: mm_pubsub.UseCaseStepUpdatedEvent,
+					EventEntity: &mm_pubsub.UseCaseStepEventEntity{
+						ID:          updatedPosEntity.ID,
+						UseCaseID:   updatedPosEntity.UseCaseID,
+						Title:       updatedPosEntity.Title,
+						Code:        updatedPosEntity.Code,
+						Description: updatedPosEntity.Description,
+						Position:    updatedPosEntity.Position,
+						CreatedAt:   updatedPosEntity.CreatedAt,
+						UpdatedAt:   updatedPosEntity.UpdatedAt,
+					},
+					EventChangedFields: []string{"Position", "UpdatedAt"},
+				},
+			}); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
+			}
+		}
 		return nil
 	})
 	if errTransaction != nil {
@@ -231,10 +289,6 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		if _, err := s.repository.deleteUseCaseStep(tx, currentUseCaseStep); err != nil {
 			return mm_err.ErrGeneric
 		}
-		if err := s.repository.recalculateUseCaseStepPosition(tx, item.UseCaseID); err != nil {
-			return mm_err.ErrGeneric
-		}
-
 		// Send an event of useCaseStep deleted
 		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
 			Message: mm_pubsub.PubSubEvent{
@@ -258,6 +312,37 @@ func (s useCaseStepService) deleteUseCaseStep(ctx *gin.Context, input deleteUseC
 		} else {
 			eventsToPublish = append(eventsToPublish, event)
 		}
+
+		if updatedPosEntities, err := s.repository.recalculateUseCaseStepPosition(tx, item.UseCaseID); err != nil {
+			return mm_err.ErrGeneric
+		} else {
+			// For the list of updated entities in Position, send events
+			for _, updatedPosEntity := range updatedPosEntities {
+				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicUseCaseStepV1, mm_pubsub.PubSubMessage{
+					Message: mm_pubsub.PubSubEvent{
+						EventID:   uuid.New(),
+						EventTime: time.Now(),
+						EventType: mm_pubsub.UseCaseStepUpdatedEvent,
+						EventEntity: &mm_pubsub.UseCaseStepEventEntity{
+							ID:          updatedPosEntity.ID,
+							UseCaseID:   updatedPosEntity.UseCaseID,
+							Title:       updatedPosEntity.Title,
+							Code:        updatedPosEntity.Code,
+							Description: updatedPosEntity.Description,
+							Position:    updatedPosEntity.Position,
+							CreatedAt:   updatedPosEntity.CreatedAt,
+							UpdatedAt:   updatedPosEntity.UpdatedAt,
+						},
+						EventChangedFields: []string{"Position", "UpdatedAt"},
+					},
+				}); err != nil {
+					return err
+				} else {
+					eventsToPublish = append(eventsToPublish, event)
+				}
+			}
+		}
+
 		return nil
 	})
 	if errTransaction != nil {

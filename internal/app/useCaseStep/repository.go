@@ -17,7 +17,7 @@ type useCaseStepRepositoryInterface interface {
 	getUseCaseStepByCode(tx *gorm.DB, useCaseID uuid.UUID, useCaseStepCode string, forUpdate bool) (useCaseStepEntity, error)
 	saveUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity, operation mm_db.SaveOperation) (useCaseStepEntity, error)
 	deleteUseCaseStep(tx *gorm.DB, useCaseStep useCaseStepEntity) (useCaseStepEntity, error)
-	recalculateUseCaseStepPosition(tx *gorm.DB, useCaseID uuid.UUID) error
+	recalculateUseCaseStepPosition(tx *gorm.DB, useCaseID uuid.UUID) ([]useCaseStepEntity, error)
 }
 
 type useCaseStepRepository struct {
@@ -140,21 +140,29 @@ func (r useCaseStepRepository) deleteUseCaseStep(tx *gorm.DB, useCaseStep useCas
 	return useCaseStep, nil
 }
 
-func (r useCaseStepRepository) recalculateUseCaseStepPosition(tx *gorm.DB, useCaseID uuid.UUID) error {
-	err := tx.Exec(`
+func (r useCaseStepRepository) recalculateUseCaseStepPosition(tx *gorm.DB, useCaseID uuid.UUID) ([]useCaseStepEntity, error) {
+	var models []*useCaseStepModel
+	err := tx.Raw(`
 		WITH ordered AS (
 			SELECT id, ROW_NUMBER() OVER (ORDER BY position ASC, updated_at ASC) AS new_position
 			FROM mm_use_case_step
 			WHERE use_case_id = ?
 		)
 		UPDATE mm_use_case_step s
-		SET position = o.new_position
+		SET position = o.new_position, updated_at = NOW()
 		FROM ordered o
 		WHERE s.id = o.id
-	`, useCaseID).Error
+		AND s.position IS DISTINCT FROM o.new_position
+		RETURNING s.*;
+	`, useCaseID).Scan(&models).Error
 	if err != nil {
-		return err
+		return []useCaseStepEntity{}, err
 	}
-	return nil
-
+	// Return only updated entities
+	var entities []useCaseStepEntity = []useCaseStepEntity{}
+	for _, model := range models {
+		entity := model.toEntity()
+		entities = append(entities, entity)
+	}
+	return entities, nil
 }
