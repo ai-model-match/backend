@@ -10,7 +10,7 @@ import (
 
 type rolloutStrategyRepositoryInterface interface {
 	checkUseCaseExists(tx *gorm.DB, useCaseID uuid.UUID) (bool, error)
-	getRolloutStrategyByUseCaseID(tx *gorm.DB, flowIDuseCaseID uuid.UUID, forUpdate bool) (rolloutStrategyEntity, error)
+	getRolloutStrategyByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) (rolloutStrategyEntity, error)
 	saveRolloutStrategy(tx *gorm.DB, rolloutStrategy rolloutStrategyEntity, operation mm_db.SaveOperation) (rolloutStrategyEntity, error)
 }
 

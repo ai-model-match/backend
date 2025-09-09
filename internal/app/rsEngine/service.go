@@ -2,6 +2,7 @@ package rsEngine
 
 import (
 	"math"
+	"slices"
 	"time"
 
 	"github.com/ai-model-match/backend/internal/pkg/mm_db"
@@ -394,195 +395,169 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 		if errTransaction != nil {
 			return errTransaction
 		}
+		// Avoid Adaptive phase is executed immediately once this one is completed
+		return nil
 	}
-	/*
-		//
-		//	ADAPTIVE Phase
-		//
-		if rs.RolloutState == mm_pubsub.RolloutStateAdaptive {
-			elaspedMinutes := int64(math.Round(time.Since(rs.UpdatedAt).Minutes()))
-			// If elasped time is not a multiple of the interval, skip it
-			if elaspedMinutes%rs.Configuration.Adaptive.IntervalMins != 0 {
-				return nil
-			}
-			// Start transaction
-			errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 
-				// Representation of Flow Statistics (FlowID --> Stats)
-				indexedStatistics := map[string]flowStatisticsEntity{}
-				statistics, err := s.repository.getFlowStatisticsByUseCaseID(tx, rs.UseCaseID)
-				if err != nil {
-					return err
-				}
-				for _, stat := range statistics {
-					indexedStatistics[stat.FlowID.String()] = stat
-				}
-				// Retrieve all active Flows for the Use Case
-				flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
-				if err != nil {
-					return err
-				}
-				// Check for each flow if it has at least the number of needed feeedback
-				// to start the adaptive phase
-				isAdaptiveReady := true
-				for _, flow := range flows {
-					if stat, ok := indexedStatistics[flow.ID.String()]; ok {
-						if stat.TotFeedback < rs.Configuration.Adaptive.MinFeedback {
-							isAdaptiveReady = false
-						}
-					}
-				}
-				// Check if we can proceed with Adaptive phase
-				if !isAdaptiveReady {
-					return nil
-				}
-				//
-				//  Now start the real ADAPTIVE alghoritm
-				//
-
-				// Find higher score and best flows
-				maxScore := 0.0
-				bestFlowIndexes := []int{}
-				for i, flow := range flows {
-					if stat, ok := indexedStatistics[flow.ID.String()]; ok {
-						if stat.AvgScore > maxScore {
-							maxScore = stat.AvgScore
-							bestFlowIndexes = []int{i}
-						} else if stat.AvgScore == maxScore {
-							bestFlowIndexes = append(bestFlowIndexes, i)
-						}
-					}
-				}
-				// Calculate the increment per Flow (in case there are multiple best flows, split the increment between them)
-				incrementPerFlow := rs.Configuration.Adaptive.MaxStepPct / float64(len(bestFlowIndexes))
-
-				// Increase traffic for best flows, without passing 100%
-				actualIncrement := 0.0
-				flowReachedMaxPctIndexes := []int{}
-				for _, bestFlowIndex := range bestFlowIndexes {
-					currentTraffic := flows[bestFlowIndex].CurrentServePct
-					newPct := *flows[bestFlowIndex].CurrentServePct + incrementPerFlow
-					flows[bestFlowIndex].CurrentServePct = &newPct
-
-					if *flows[bestFlowIndex].CurrentServePct > 100 {
-						flowReachedMaxPctIndexes = append(flowReachedMaxPctIndexes, bestFlowIndex)
-						*flows[bestFlowIndex].CurrentServePct = 100
-					}
-					actualIncrement += *flows[bestFlowIndex].CurrentServePct - *currentTraffic
-				}
-
-				// If there is at least one flow with 100%, we need to:
-				// - distribute best flows on 100% (if one, we are fine)
-				// - set all others to 0%
-				if len(flowReachedMaxPctIndexes) > 0 {
-					is Ma
-					for i := range flows {
-						if slices.Contains(flowReachedMaxPctIndexes, i) {
-							newPct := mm_utils.RoundTo2Decimals(100.0 / float64(len(flowReachedMaxPctIndexes)))
-							flows[i].CurrentServePct = &newPct
-						} else {
-							// Decrease Flow to 0%
-							flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
-						}
-						// Save Flow
-						flows[i].UpdatedAt = time.Now()
-						s.repository.saveFlow(tx, flows[i], mm_db.Update)
-					}
-					// Mark RS state to Completed
-					rs.RolloutState = mm_pubsub.RolloutStateCompleted
-					rs.UpdatedAt = time.Now()
-					s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
-					// We can stop here
-					return nil
-				}
-
-				// Otherwise, check other
-
-				// If not Flow has 100%,review other flows PCT based on how far they are in term of score from higher score
-				totalDelta := 0.0
-				deltas := make([]float64, len(flows))
-				for i := range flows {
-					if slices.Contains(bestFlowIndexes, i) {
-						if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
-							deltas[i] = maxScore - stat.AvgScore
-							totalDelta += deltas[i]
-						}
-					}
-				}
-
-				if totalDelta > 0 {
-					for i := range flows {
-						if slices.Contains(bestFlowIndexes, i) {
-							calculatedPct := *flows[i].CurrentServePct - ((deltas[i] / totalDelta) * actualIncrement)
-							flows[i].CurrentServePct = &calculatedPct
-							if *flows[i].CurrentServePct < 0.0 {
-								flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
-							}
-						}
-					}
-				}
-
-				// 6. Assicurati che la somma totale non superi 100%
-				sumTraffic := 0.0
-				for _, f := range flows {
-					sumTraffic += *f.CurrentServePct
-				}
-				if sumTraffic > 100 {
-					scale := 100 / sumTraffic
-					for i := range flows {
-						calculatedPct := *flows[i].CurrentServePct * scale
-						flows[i].CurrentServePct = &calculatedPct
-					}
-				}
-
-				// 7. Se somma < 100, scala proporzionalmente in base ai punteggi
-				sumTraffic = 0.0
-				for _, f := range flows {
-					sumTraffic += *f.CurrentServePct
-				}
-				if sumTraffic < 100 {
-					additional := 100 - sumTraffic
-					scoreSum := 0.0
-					for _, flow := range flows {
-						if stat, ok := indexedStatistics[flow.ID.String()]; ok {
-							scoreSum += stat.AvgScore
-						}
-					}
-					if scoreSum > 0 {
-						for i := range flows {
-							calculatedPct := *flows[i].CurrentServePct + (additional * *flows[i].CurrentServePct / scoreSum)
-							flows[i].CurrentServePct = &calculatedPct
-							if *flows[i].CurrentServePct > 100 {
-								flows[i].CurrentServePct = mm_utils.Float64Ptr(100)
-							}
-						}
-					}
-				}
-
-				// Given the avg score for each flow, find the best one and the lowest one
-				rsGoalAchieved := false
-				for _, flow := range flows {
-					// Save new Flow PCTs
-					flow.UpdatedAt = time.Now()
-					s.repository.saveFlow(tx, flow, mm_db.Update)
-					// If one of the Flows reachs 100%, the RS achieves its goal
-					if *flow.CurrentServePct == 100 {
-						rsGoalAchieved = true
-					}
-				}
-				// If the Adaptive phase achieved its goal, move to COMPLETED
-				if rsGoalAchieved {
-					rs.RolloutState = mm_pubsub.RolloutStateCompleted
-					rs.UpdatedAt = time.Now()
-					s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
-				}
-				return nil
-			})
-			if errTransaction != nil {
-				return errTransaction
-			}
-
+	//
+	//	ADAPTIVE Phase
+	//
+	if rs.RolloutState == mm_pubsub.RolloutStateAdaptive {
+		elaspedMinutes := int64(math.Round(time.Since(rs.UpdatedAt).Minutes()))
+		// If elasped time is not a multiple of the interval, skip it
+		if elaspedMinutes%rs.Configuration.Adaptive.IntervalMins != 0 {
+			return nil
 		}
-	*/
+		// Start transaction
+		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+			// Representation of Flow Statistics (FlowID --> Stats)
+			indexedStatistics := map[string]flowStatisticsEntity{}
+			statistics, err := s.repository.getFlowStatisticsByUseCaseID(tx, rs.UseCaseID)
+			if err != nil {
+				return err
+			}
+			for _, stat := range statistics {
+				indexedStatistics[stat.FlowID.String()] = stat
+			}
+			// Retrieve all active Flows for the Use Case
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			if err != nil {
+				return err
+			}
+			// Check for each flow if it has at least the number of needed feeedback
+			// to start the adaptive phase
+			isAdaptiveReady := true
+			for _, flow := range flows {
+				if stat, ok := indexedStatistics[flow.ID.String()]; ok {
+					if stat.TotFeedback < rs.Configuration.Adaptive.MinFeedback {
+						isAdaptiveReady = false
+					}
+				}
+			}
+			// Check if we can proceed with Adaptive phase
+			if !isAdaptiveReady {
+				return nil
+			}
+
+			// Find highest score and best Flow Indexes
+			bestScore := 0.0
+			bestFlowIndexes := []int{}
+			for i := range flows {
+				if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
+					if stat.AvgScore > bestScore {
+						bestScore = stat.AvgScore
+						bestFlowIndexes = []int{i}
+					} else if stat.AvgScore == bestScore {
+						bestFlowIndexes = append(bestFlowIndexes, i)
+					}
+				}
+			}
+			// Check how much traffic is provided by worst Flows and find their Indexes
+			servedByWorst := 0.0
+			sumAvgScoreByWorst := 0.0
+			worstFlowIndexes := []int{}
+			for i := range flows {
+				if !slices.Contains(bestFlowIndexes, i) {
+					worstFlowIndexes = append(worstFlowIndexes, i)
+					servedByWorst += *flows[i].CurrentServePct
+					if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
+						sumAvgScoreByWorst += stat.AvgScore
+					}
+				}
+			}
+			sumAvgScoreByWorst = mm_utils.RoundTo2Decimals(sumAvgScoreByWorst)
+			// Calculate the maximum increment we can assign to best Flows by decrementing worst Flows
+			// keeping as limit the provided configuration
+			totalPossibleIncrement := rs.Configuration.Adaptive.MaxStepPct
+			if servedByWorst < totalPossibleIncrement {
+				totalPossibleIncrement = servedByWorst
+			}
+			// Calculate the increment per Flow (in case there are multiple best flows, split the increment between them)
+			incrementPerBestFlow := totalPossibleIncrement / float64(len(bestFlowIndexes))
+			// Increase traffic for best flows, without passing 100%. Track if one Flow reached 100%
+			flowReachedMaxPct := false
+			for _, bestFlowIndex := range bestFlowIndexes {
+				newPct := *flows[bestFlowIndex].CurrentServePct + incrementPerBestFlow
+				flows[bestFlowIndex].CurrentServePct = mm_utils.RoundTo2DecimalsPtr(&newPct)
+				if *flows[bestFlowIndex].CurrentServePct >= 100 {
+					flowReachedMaxPct = true
+					*flows[bestFlowIndex].CurrentServePct = 100
+				}
+			}
+			// If one Flow reached 100%, we need to put all others to 0%
+			if flowReachedMaxPct {
+				for i := range flows {
+					if *flows[i].CurrentServePct != 100.0 {
+						flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
+					}
+				}
+			} else {
+				// Otherwise, for each worst Flow, calculate how much we need to decrement it based on the distance between its Score and Best Score
+				totDecremented := 0.0
+				for _, i := range worstFlowIndexes {
+					if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
+						toDecrement := ((sumAvgScoreByWorst - stat.AvgScore) / (sumAvgScoreByWorst * float64(len(worstFlowIndexes)-1)) * totalPossibleIncrement)
+						newPct := *flows[i].CurrentServePct - toDecrement
+
+						if newPct < 0.0 {
+							totDecremented += *flows[i].CurrentServePct
+							flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
+						} else {
+							totDecremented += toDecrement
+							flows[i].CurrentServePct = mm_utils.RoundTo2DecimalsPtr(&newPct)
+						}
+					}
+				}
+				if totalPossibleIncrement-totDecremented > 0 {
+					missingDecrement := totalPossibleIncrement - totDecremented
+					// If there is additional PCT to decrement, proceed in order, by sorting all Flows based on their Scores
+					slices.SortFunc(flows, func(a flowEntity, b flowEntity) int {
+						if statA, okA := indexedStatistics[a.ID.String()]; okA {
+							if statB, okB := indexedStatistics[b.ID.String()]; okB {
+								return int((statA.AvgScore - statB.AvgScore) * 100)
+							}
+						}
+						return 0
+					})
+					// Now, considering only Worst Flows, start reducing the traffic frome the worst Flow to better one
+					for i := range flows {
+						if missingDecrement == 0 {
+							break
+						}
+						if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
+							// Consider only worst Flows
+							if stat.AvgScore != bestScore {
+								if *flows[i].CurrentServePct >= missingDecrement {
+									newPct := *flows[i].CurrentServePct - missingDecrement
+									flows[i].CurrentServePct = mm_utils.RoundTo2DecimalsPtr(&newPct)
+									missingDecrement = 0
+								} else {
+									missingDecrement -= *flows[i].CurrentServePct
+									flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
+								}
+							}
+						}
+					}
+				}
+			}
+			// Save all Flows
+			for i := range flows {
+				flows[i].UpdatedAt = time.Now()
+				s.repository.saveFlow(tx, flows[i], mm_db.Update)
+			}
+
+			// If the Adaptive phase achieved its goal, move to COMPLETED
+			if flowReachedMaxPct {
+				rs.RolloutState = mm_pubsub.RolloutStateCompleted
+				rs.UpdatedAt = time.Now()
+				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+			}
+			return nil
+		})
+		if errTransaction != nil {
+			return errTransaction
+		}
+		return nil
+	}
 	return nil
 }
