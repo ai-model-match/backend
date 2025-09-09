@@ -347,6 +347,13 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			if err != nil {
 				return err
 			}
+			// If there are no active Flows, mark the RS as completed
+			if len(flows) == 0 {
+				rs.RolloutState = mm_pubsub.RolloutStateCompleted
+				rs.UpdatedAt = time.Now()
+				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+				return nil
+			}
 			// From now, check how many minutes are missing to reach the target (start of WARMUP + Interval Mins)
 			missingMinutes := int64(math.Round(time.Until((rs.UpdatedAt.Add(time.Duration(*rs.Configuration.Warmup.IntervalMins * int64(time.Minute))))).Minutes()))
 			// Specific case, should never happen, force to 0, so move automatically to ADAPTIVE
@@ -423,6 +430,13 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
 			if err != nil {
 				return err
+			}
+			// If there are no active Flows, mark the RS as completed
+			if len(flows) == 0 {
+				rs.RolloutState = mm_pubsub.RolloutStateCompleted
+				rs.UpdatedAt = time.Now()
+				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+				return nil
 			}
 			// Check for each flow if it has at least the number of needed feeedback
 			// to start the adaptive phase

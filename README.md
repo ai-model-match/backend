@@ -21,6 +21,7 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - If you activate the first Flow, indipendently of its Pct, it will be set to 100%.
 - If you activate a Flow with a specific Pct, other active Flows will be adapted to cover 100% (equally distributed).
 - If you deactivate a Flow that served a specific Pct, other active Flows will be adapted to cover 100% (equally distributed).
+- If you start the Rollout Strategy, but deactivate all Flows, the RS will be marked completed as soon as possible.
 
 ### Picker Rules
 - You cannot send a request to a not active Use Case.

@@ -92,12 +92,16 @@ func (s pickerService) pick(ctx *gin.Context, input pickerInputDto) (pickerEntit
 				}
 			}
 		}
-		// We have all available Flows that covers 100%.
-		// So given a random number, take the Flow to consider
-		r := rand.Float64() * 100
+		// All available flows are expected to add up to 100%, but due to rounding they may be slightly off.
+		// To handle this safely, we use a weighted random selection.
+		totalPct := 0.0
+		for i := range availableFlows {
+			totalPct += availableFlows[i].CurrentServePct
+		}
+		r := rand.Float64() * totalPct
 		var cumulative float64
-		for i, f := range availableFlows {
-			cumulative += f.CurrentServePct
+		for i := range availableFlows {
+			cumulative += availableFlows[i].CurrentServePct
 			if r < cumulative {
 				selectedFlow = availableFlows[i]
 				break
