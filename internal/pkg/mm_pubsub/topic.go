@@ -19,4 +19,5 @@ const (
 	TopicRolloutStrategyV1 PubSubTopic = "topic/v1/rollout-strategy"
 	TopicPickerV1          PubSubTopic = "topic/v1/picker"
 	TopicFeedbackV1        PubSubTopic = "topic/v1/feedback"
+	TopicRsEnginekV1       PubSubTopic = "topic/v1/rs-engine"
 )

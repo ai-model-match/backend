@@ -17,6 +17,7 @@ type rolloutStrategyServiceInterface interface {
 	createRolloutStrategy(useCaseID uuid.UUID) (rolloutStrategyEntity, error)
 	updateRolloutStrategyConfig(ctx *gin.Context, input updateRolloutStrategyInputDto) (rolloutStrategyEntity, error)
 	updateRolloutStrategyState(ctx *gin.Context, input updateRolloutStrategyStatusInputDto) (rolloutStrategyEntity, error)
+	updateRolloutStrategyFromEvent(event mm_pubsub.RsEngineEventEntity) error
 }
 
 type rolloutStrategyService struct {
@@ -261,4 +262,58 @@ func (s rolloutStrategyService) updateRolloutStrategyState(ctx *gin.Context, inp
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return updatedRolloutStrategy, nil
+}
+
+func (s rolloutStrategyService) updateRolloutStrategyFromEvent(event mm_pubsub.RsEngineEventEntity) error {
+	now := time.Now()
+	var updatedRolloutStrategy rolloutStrategyEntity
+	eventsToPublish := []mm_pubsub.EventToPublish{}
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		// Check if the use Case exists
+		currentRolloutStrategy, err := s.repository.getRolloutStrategyByUseCaseID(tx, event.UseCaseID, true)
+		if err != nil {
+			return mm_err.ErrGeneric
+		} else if mm_utils.IsEmpty(currentRolloutStrategy) {
+			return errRolloutStrategyNotFound
+		} else if currentRolloutStrategy.RolloutState == event.RolloutState {
+			// If the stat didn't change, no updates
+			return nil
+		} else {
+			updatedRolloutStrategy = currentRolloutStrategy
+		}
+		// Save Rollout Strategy
+		updatedRolloutStrategy.RolloutState = event.RolloutState
+		updatedRolloutStrategy.UpdatedAt = now
+		if _, err := s.repository.saveRolloutStrategy(tx, updatedRolloutStrategy, mm_db.Update); err != nil {
+			return mm_err.ErrGeneric
+		}
+		// Send an event of Rollout Straregy updated
+		if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRolloutStrategyV1, mm_pubsub.PubSubMessage{
+			Message: mm_pubsub.PubSubEvent{
+				EventID:   uuid.New(),
+				EventTime: time.Now(),
+				EventType: mm_pubsub.RolloutStrategyUpdatedEvent,
+				EventEntity: &mm_pubsub.RolloutStrategyEventEntity{
+					ID:            updatedRolloutStrategy.ID,
+					UseCaseID:     updatedRolloutStrategy.UseCaseID,
+					RolloutState:  updatedRolloutStrategy.RolloutState,
+					Configuration: updatedRolloutStrategy.Configuration,
+					CreatedAt:     updatedRolloutStrategy.CreatedAt,
+					UpdatedAt:     updatedRolloutStrategy.UpdatedAt,
+				},
+				EventChangedFields: mm_utils.DiffStructs(currentRolloutStrategy, updatedRolloutStrategy),
+			},
+		}); err != nil {
+			return err
+		} else {
+			eventsToPublish = append(eventsToPublish, event)
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
+	}
+	return nil
 }

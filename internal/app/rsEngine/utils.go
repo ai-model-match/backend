@@ -1,6 +1,12 @@
 package rsEngine
 
-import "github.com/ai-model-match/backend/internal/pkg/mm_utils"
+import (
+	"time"
+
+	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
+	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
+	"github.com/google/uuid"
+)
 
 func calculateNewServePct(currentPct float64, targetPct float64, currentSteps int64, targetSteps int64) float64 {
 	// If target PCT of the Flow has been reach, we are fine
@@ -18,4 +24,33 @@ func calculateNewServePct(currentPct float64, targetPct float64, currentSteps in
 	// and we are reacting from that, it is not in combination.
 	delta := (targetPct - currentPct) / float64(targetSteps-currentSteps+1)
 	return mm_utils.RoundTo2Decimals(currentPct + delta)
+}
+
+/*
+Create a new Event to send for RS Engine update to notify Flows and Rollout Strategy of new changes
+based on the different phases of the Engine
+*/
+func prepareEvent(rs rolloutStrategyEntity, flows []flowEntity) mm_pubsub.PubSubMessage {
+	flowEntities := []mm_pubsub.RsEngineFlowEventEntity{}
+	for i := range flows {
+		flowEntities = append(flowEntities, mm_pubsub.RsEngineFlowEventEntity{
+			FlowID:          flows[i].ID,
+			CurrentServePct: *flows[i].CurrentServePct,
+		})
+	}
+	eventEntity := &mm_pubsub.RsEngineEventEntity{
+		ID:           uuid.New(),
+		UseCaseID:    rs.UseCaseID,
+		RolloutID:    rs.ID,
+		RolloutState: rs.RolloutState,
+		Flows:        flowEntities,
+	}
+	return mm_pubsub.PubSubMessage{
+		Message: mm_pubsub.PubSubEvent{
+			EventID:            uuid.New(),
+			EventTime:          time.Now(),
+			EventType:          mm_pubsub.RsEngineUpdatedEvent,
+			EventEntity:        eventEntity,
+			EventChangedFields: mm_utils.DiffStructs(mm_pubsub.RsEngineEventEntity{}, *eventEntity),
+		}}
 }

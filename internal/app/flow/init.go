@@ -15,10 +15,13 @@ func Init(envs *mm_env.Envs, dbStorage *gorm.DB, pubSubAgent *mm_pubsub.PubSubAg
 	zap.L().Info("Initialize Flow package...")
 	var repository flowRepositoryInterface
 	var service flowServiceInterface
+	var consumer flowConsumerInterface
 	var router flowRouterInterface
 
 	repository = newFlowRepository(envs.SearchRelevanceThreshold)
 	service = newFlowService(dbStorage, pubSubAgent, repository)
+	consumer = newFlowConsumer(pubSubAgent, service)
+	consumer.subscribe()
 	router = newFlowRouter(service)
 	router.register(routerGroup)
 	zap.L().Info("Flow package initialized")

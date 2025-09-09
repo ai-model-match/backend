@@ -141,3 +141,16 @@ type FeedbackEventEntity struct {
 	Comment       string    `json:"comment"`
 	CreatedAt     time.Time `json:"createdAt"`
 }
+
+type RsEngineEventEntity struct {
+	ID           uuid.UUID                 `json:"id"`
+	UseCaseID    uuid.UUID                 `json:"useCaseId"`
+	RolloutID    uuid.UUID                 `json:"rolloutId"`
+	RolloutState RolloutState              `json:"rolloutState"`
+	Flows        []RsEngineFlowEventEntity `json:"flows"`
+}
+
+type RsEngineFlowEventEntity struct {
+	FlowID          uuid.UUID `json:"id"`
+	CurrentServePct float64   `json:"currentServePct"`
+}

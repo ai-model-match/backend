@@ -21,6 +21,7 @@ type flowServiceInterface interface {
 	deleteFlow(ctx *gin.Context, input deleteFlowInputDto) (flowEntity, error)
 	cloneFlow(ctx *gin.Context, input cloneFlowInputDto) (flowEntity, error)
 	updateFlowPctBulk(ctx *gin.Context, input updateFlowPctBulkDto) ([]flowEntity, error)
+	updateFlowsFromEvent(event mm_pubsub.RsEngineEventEntity) error
 }
 
 type flowService struct {
@@ -439,7 +440,7 @@ func (s flowService) updateFlowPctBulk(ctx *gin.Context, input updateFlowPctBulk
 				Message: mm_pubsub.PubSubEvent{
 					EventID:   uuid.New(),
 					EventTime: time.Now(),
-					EventType: mm_pubsub.FlowCreatedEvent,
+					EventType: mm_pubsub.FlowUpdatedEvent,
 					EventEntity: &mm_pubsub.FlowEventEntity{
 						ID:              updatedFlow.ID,
 						UseCaseID:       updatedFlow.UseCaseID,
@@ -467,4 +468,84 @@ func (s flowService) updateFlowPctBulk(ctx *gin.Context, input updateFlowPctBulk
 		s.pubSubAgent.PublishBulk(eventsToPublish)
 	}
 	return updatedFlows, nil
+}
+
+func (s flowService) updateFlowsFromEvent(event mm_pubsub.RsEngineEventEntity) error {
+	eventsToPublish := []mm_pubsub.EventToPublish{}
+	updatedFlows := []flowEntity{}
+	errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
+		exists, err := s.repository.checkUseCaseExists(s.storage, event.UseCaseID)
+		if err != nil {
+			return mm_err.ErrGeneric
+		}
+		if !exists {
+			return errUseCaseNotFound
+		}
+		// Read all active Flows
+		var activeFlows []flowEntity
+		if activeFlows, err = s.repository.getAllActiveFlow(s.storage, event.UseCaseID, true); err != nil {
+			return mm_err.ErrGeneric
+		}
+		// Prepare indexed Active Flows
+		indexedActiveFlows := map[string]flowEntity{}
+		for _, activeFlow := range activeFlows {
+			indexedActiveFlows[activeFlow.ID.String()] = activeFlow
+		}
+		// Prepare indexed Input Flows
+		indexedInputFlowPcts := map[string]float64{}
+		for _, inputFlow := range event.Flows {
+			indexedInputFlowPcts[inputFlow.FlowID.String()] = inputFlow.CurrentServePct
+		}
+		// Check all inputs are present as active Flows
+		for flowID := range indexedInputFlowPcts {
+			if _, ok := indexedActiveFlows[flowID]; !ok {
+				return errActiveFlowNotFound
+			}
+		}
+		// Loop all active Flows and update their PCTs (default to 0 for missing inputs)
+		for flowID, currentFlow := range indexedActiveFlows {
+			updatedFlow := currentFlow
+			if inputFlowPct, ok := indexedInputFlowPcts[flowID]; ok {
+				updatedFlow.CurrentServePct = &inputFlowPct
+			} else {
+				updatedFlow.CurrentServePct = mm_utils.Float64Ptr(0)
+			}
+			if _, err = s.repository.saveFlow(tx, updatedFlow, mm_db.Update); err != nil {
+				return mm_err.ErrGeneric
+			}
+			updatedFlow.UpdatedAt = time.Now()
+			updatedFlows = append(updatedFlows, updatedFlow)
+			// Send an event of flow updated
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicFlowV1, mm_pubsub.PubSubMessage{
+				Message: mm_pubsub.PubSubEvent{
+					EventID:   uuid.New(),
+					EventTime: time.Now(),
+					EventType: mm_pubsub.FlowUpdatedEvent,
+					EventEntity: &mm_pubsub.FlowEventEntity{
+						ID:              updatedFlow.ID,
+						UseCaseID:       updatedFlow.UseCaseID,
+						Active:          updatedFlow.Active,
+						Title:           updatedFlow.Title,
+						Description:     updatedFlow.Description,
+						CurrentServePct: updatedFlow.CurrentServePct,
+						CreatedAt:       updatedFlow.CreatedAt,
+						UpdatedAt:       updatedFlow.UpdatedAt,
+						ClonedFromID:    updatedFlow.ClonedFromID,
+					},
+					EventChangedFields: mm_utils.DiffStructs(currentFlow, updatedFlow),
+				},
+			}); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
+			}
+		}
+		return nil
+	})
+	if errTransaction != nil {
+		return errTransaction
+	} else {
+		s.pubSubAgent.PublishBulk(eventsToPublish)
+	}
+	return nil
 }

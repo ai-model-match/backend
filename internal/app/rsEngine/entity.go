@@ -12,7 +12,6 @@ type flowEntity struct {
 	UseCaseID       uuid.UUID `json:"useCaseId"`
 	Active          bool      `json:"active"`
 	CurrentServePct *float64  `json:"currentServePct"`
-	UpdatedAt       time.Time `json:"updatedAt"`
 }
 
 type flowStatisticsEntity struct {

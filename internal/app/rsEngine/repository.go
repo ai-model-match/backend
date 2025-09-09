@@ -1,20 +1,16 @@
 package rsEngine
 
 import (
-	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
-	"gorm.io/gorm/clause"
 )
 
 type rsEngineRepositoryInterface interface {
 	getRolloutStrategyByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) (rolloutStrategyEntity, error)
 	getActiveRolloutStrategiesInState(tx *gorm.DB, states []mm_pubsub.RolloutState) ([]rolloutStrategyEntity, error)
-	getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error)
+	getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) ([]flowEntity, error)
 	getFlowStatisticsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) ([]flowStatisticsEntity, error)
-	saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error)
-	saveRolloutStrategy(tx *gorm.DB, rolloutStrategy rolloutStrategyEntity, operation mm_db.SaveOperation) (rolloutStrategyEntity, error)
 }
 
 type rsEngineRepository struct {
@@ -51,12 +47,9 @@ func (r rsEngineRepository) getActiveRolloutStrategiesInState(tx *gorm.DB, state
 	return entities, nil
 }
 
-func (r rsEngineRepository) getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID, forUpdate bool) ([]flowEntity, error) {
+func (r rsEngineRepository) getActiveFlowsByUseCaseID(tx *gorm.DB, useCaseID uuid.UUID) ([]flowEntity, error) {
 	var models []flowModel
 	query := tx.Model(flowModel{}).Where("use_case_id = ?", useCaseID).Where("active IS TRUE")
-	if forUpdate {
-		query.Clauses(clause.Locking{Strength: "UPDATE"})
-	}
 	result := query.Find(&models)
 	if result.Error != nil {
 		return nil, result.Error
@@ -81,41 +74,4 @@ func (r rsEngineRepository) getFlowStatisticsByUseCaseID(tx *gorm.DB, useCaseID 
 		entities[i] = model.toEntity()
 	}
 	return entities, nil
-}
-
-func (r rsEngineRepository) saveFlow(tx *gorm.DB, flow flowEntity, operation mm_db.SaveOperation) (flowEntity, error) {
-	var model = flowModel(flow)
-	var err error
-	switch operation {
-	case mm_db.Create:
-		err = tx.Create(model).Error
-	case mm_db.Update:
-		err = tx.Updates(model).Error
-	case mm_db.Upsert:
-		err = tx.Save(model).Error
-	}
-	if err != nil {
-		return flowEntity{}, err
-	}
-	return flow, nil
-}
-
-func (r rsEngineRepository) saveRolloutStrategy(tx *gorm.DB, rolloutStrategy rolloutStrategyEntity, operation mm_db.SaveOperation) (rolloutStrategyEntity, error) {
-	var err error
-	var model rolloutStrategyModel
-	if err = model.fromEntity(rolloutStrategy); err != nil {
-		return rolloutStrategyEntity{}, err
-	}
-	switch operation {
-	case mm_db.Create:
-		err = tx.Create(model).Error
-	case mm_db.Update:
-		err = tx.Updates(model).Error
-	case mm_db.Upsert:
-		err = tx.Save(model).Error
-	}
-	if err != nil {
-		return rolloutStrategyEntity{}, err
-	}
-	return rolloutStrategy, nil
 }

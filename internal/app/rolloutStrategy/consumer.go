@@ -68,4 +68,44 @@ func (r rolloutStrategyConsumer) subscribe() {
 			}()
 		}
 	}()
+
+	go func() {
+		messageChannel := r.pubSub.Subscribe(mm_pubsub.TopicRsEnginekV1)
+		isChannelOpen := true
+		for isChannelOpen {
+			func() {
+				defer func() {
+					if r := recover(); r != nil {
+						mm_log.LogPanicError(r, "rollout-strategy-consumer", "Panic occurred in handling a new message")
+					}
+				}()
+				msg, channelOpen := <-messageChannel
+				if !channelOpen {
+					isChannelOpen = false
+					zap.L().Info(
+						"Channel closed. No more events to listen... quit!",
+						zap.String("service", "rollout-strategy-consumer"),
+					)
+					return
+				}
+				// ACK message
+				defer msg.Message.EventState.Done()
+				zap.L().Info(
+					"Received Event Message",
+					zap.String("service", "rollout-strategy-consumer"),
+					zap.String("event-id", msg.Message.EventID.String()),
+					zap.String("event-type", string(msg.Message.EventType)),
+				)
+				if msg.Message.EventType != mm_pubsub.RsEngineUpdatedEvent {
+					return
+				}
+				event := msg.Message.EventEntity.(*mm_pubsub.RsEngineEventEntity)
+				// Update the Rollout Strategy
+				if err := r.service.updateRolloutStrategyFromEvent(*event); err != nil {
+					zap.L().Error("Impossible to update the rolloutStrategy from RS Engine event", zap.String("service", "rollout-strategy-consumer"))
+					return
+				}
+			}()
+		}
+	}()
 }

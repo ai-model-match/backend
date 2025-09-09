@@ -37,6 +37,7 @@ const (
 	RolloutStrategyUpdatedEvent PubSubEventType = "rollout-strategy.updated"
 	PickerMatchedEvent          PubSubEventType = "picker.matched"
 	FeedbackCreatedEvent        PubSubEventType = "feedback.created"
+	RsEngineUpdatedEvent        PubSubEventType = "rs-engine.updated"
 )
 
 /*
@@ -62,6 +63,7 @@ var eventEntityFactories = map[PubSubEventType]func() any{
 	RolloutStrategyUpdatedEvent: func() interface{} { return &RolloutStrategyEventEntity{} },
 	PickerMatchedEvent:          func() interface{} { return &PickerEventEntity{} },
 	FeedbackCreatedEvent:        func() interface{} { return &FeedbackEventEntity{} },
+	RsEngineUpdatedEvent:        func() interface{} { return &RsEngineEventEntity{} },
 }
 
 /*

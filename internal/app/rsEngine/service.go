@@ -5,7 +5,6 @@ import (
 	"slices"
 	"time"
 
-	"github.com/ai-model-match/backend/internal/pkg/mm_db"
 	"github.com/ai-model-match/backend/internal/pkg/mm_pubsub"
 	"github.com/ai-model-match/backend/internal/pkg/mm_utils"
 	"go.uber.org/zap"
@@ -59,6 +58,7 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 			return nil
 		}
 		// Start transaction
+		eventsToPublish := []mm_pubsub.EventToPublish{}
 		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 			// List of Flows without an explicit Warmup goal
 			activeFlowsWithoutGoal := []flowEntity{}
@@ -81,51 +81,55 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 				totalCountSessionReqs += stat.TotSessionRequests
 			}
 			// Retrieve all active Flows for the Use Case
-			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID)
 			if err != nil {
 				return err
 			}
 			// Indicates if all Flows have achieved their goal
 			var flowGoalAchieved bool = true
 			var totalPctReservedForGoals float64 = 0
-			for _, flow := range flows {
+			activeFlowsWithoutGoalIndexes := []int{}
+			for i := range flows {
 				// Per each flow update PCT and check if there is an explicit Warmup goal achieved
-				if pctGoal, ok := indexedGoals[flow.ID.String()]; !ok {
+				if pctGoal, ok := indexedGoals[flows[i].ID.String()]; !ok {
 					// No explicit Warmup goal, add to the list
-					activeFlowsWithoutGoal = append(activeFlowsWithoutGoal, flow)
+					activeFlowsWithoutGoalIndexes = append(activeFlowsWithoutGoalIndexes, i)
 					continue
 				} else {
 					// Update the Flow PCT based on statistics
-					flow.CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flow.CurrentServePct, pctGoal, totalCountSessionReqs, *rs.Configuration.Warmup.IntervalSessReqs))
+					flows[i].CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flows[i].CurrentServePct, pctGoal, totalCountSessionReqs, *rs.Configuration.Warmup.IntervalSessReqs))
 					totalPctReservedForGoals += pctGoal
-					flow.UpdatedAt = time.Now()
-					// Save and check if the goal has been achieved
-					s.repository.saveFlow(tx, flow, mm_db.Update)
-					if *flow.CurrentServePct != pctGoal {
+					// Check if the goal has been achieved
+					if *flows[i].CurrentServePct != pctGoal {
 						flowGoalAchieved = false
 					}
 				}
 			}
 			// Now that we updated all Flows with an explicit Warmup goal, proceed with others
 			remainingPctPerFlow := (100.0 - totalPctReservedForGoals) / float64(len(activeFlowsWithoutGoal))
-			for _, flow := range activeFlowsWithoutGoal {
-				flow.CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flow.CurrentServePct, remainingPctPerFlow, totalCountSessionReqs, *rs.Configuration.Warmup.IntervalSessReqs))
-				flow.UpdatedAt = time.Now()
-				s.repository.saveFlow(tx, flow, mm_db.Update)
-				if *flow.CurrentServePct != remainingPctPerFlow {
+			for _, i := range activeFlowsWithoutGoalIndexes {
+				flows[i].CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flows[i].CurrentServePct, remainingPctPerFlow, totalCountSessionReqs, *rs.Configuration.Warmup.IntervalSessReqs))
+				if *flows[i].CurrentServePct != remainingPctPerFlow {
 					flowGoalAchieved = false
 				}
 			}
 			// If all flows have achieved their goal, we can move to the next state
 			if flowGoalAchieved {
 				rs.RolloutState = mm_pubsub.RolloutStateAdaptive
-				rs.UpdatedAt = time.Now()
-				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+			}
+			// Send RS-ENGINE-UPDATE event
+			e := prepareEvent(rs, flows)
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 			return nil
 		})
 		if errTransaction != nil {
 			return errTransaction
+		} else {
+			s.pubSubAgent.PublishBulk(eventsToPublish)
 		}
 	}
 	//
@@ -150,6 +154,7 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 			return nil
 		}
 		// Start transaction
+		eventsToPublish := []mm_pubsub.EventToPublish{}
 		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 			// Representation of Escape rules (FlowID --> Escape Rule)
 			indexedRules := map[string]mm_pubsub.RsEscapeRule{}
@@ -166,47 +171,52 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 				indexedStatistics[stat.FlowID.String()] = stat
 			}
 			// Retrieve all active Flows for the Use Case
-			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID)
 			if err != nil {
 				return err
 			}
-			for _, flow := range flows {
+			for i := range flows {
 				// Per each flow check if there is an explicit Rule for Escape
-				if rule, ok := indexedRules[flow.ID.String()]; ok {
+				if rule, ok := indexedRules[flows[i].ID.String()]; ok {
 					// If yes, so check if there is also a Flow Statistics
-					if stat, ok := indexedStatistics[flow.ID.String()]; ok {
+					if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
 						// Check if the Escape rule matches (based on min number of feedback and score)
 						if rule.MinFeedback <= stat.TotFeedback && rule.LowerScore >= stat.AvgScore {
 							// If yes, move the Rollout Strategy in ESCAPED status
 							rs.RolloutState = mm_pubsub.RolloutStateEscaped
-							rs.UpdatedAt = time.Now()
-							s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
 							// Representation of Escape rules (FlowID --> Escape Rule)
 							indexedRollback := map[string]mm_pubsub.RsEscapeRollback{}
 							for _, rb := range rule.Rollback {
 								indexedRollback[rb.FlowID.String()] = rb
 							}
 							// Adapt all Flows to the Rollback PCTs
-							for _, f := range flows {
+							for i := range flows {
 								// For each active Flow check if there is a Rollback rule that
 								// determine the final Pct, otherwise set to 0
-								if rb, ok := indexedRollback[f.ID.String()]; ok {
-									f.CurrentServePct = &rb.FinalServePct
+								if rb, ok := indexedRollback[flows[i].ID.String()]; ok {
+									flows[i].CurrentServePct = &rb.FinalServePct
 								} else {
-									f.CurrentServePct = mm_utils.Float64Ptr(0)
+									flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
 								}
-								f.UpdatedAt = time.Now()
-								s.repository.saveFlow(tx, f, mm_db.Update)
 							}
 							break
 						}
 					}
 				}
 			}
+			// Send RS-ENGINE-UPDATE event
+			e := prepareEvent(rs, flows)
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
+			}
 			return nil
 		})
 		if errTransaction != nil {
 			return errTransaction
+		} else {
+			s.pubSubAgent.PublishBulk(eventsToPublish)
 		}
 	}
 	return nil
@@ -230,6 +240,7 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 			return nil
 		}
 		// Start transaction
+		eventsToPublish := []mm_pubsub.EventToPublish{}
 		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 			// Representation of Escape rules (FlowID --> Escape Rule)
 			indexedRules := map[string]mm_pubsub.RsEscapeRule{}
@@ -237,37 +248,44 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 				indexedRules[rule.FlowID.String()] = rule
 			}
 			// Retrieve all active Flows for the Use Case
-			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID)
 			if err != nil {
 				return err
 			}
-			for _, flow := range flows {
+			for i := range flows {
 				// Per each flow check if there is an explicit Rule for Escape
-				if rule, ok := indexedRules[flow.ID.String()]; ok {
+				if rule, ok := indexedRules[flows[i].ID.String()]; ok {
 					// Representation of Escape rules (FlowID --> Escape Rule)
 					indexedRollback := map[string]mm_pubsub.RsEscapeRollback{}
 					for _, rb := range rule.Rollback {
 						indexedRollback[rb.FlowID.String()] = rb
 					}
 					// Adapt all Flows to the Rollback PCTs
-					for _, f := range flows {
+					for k := range flows {
 						// For each active Flow check if there is a Rollback rule that
 						// determine the final Pct, otherwise set to 0
-						if rb, ok := indexedRollback[f.ID.String()]; ok {
-							f.CurrentServePct = &rb.FinalServePct
+						if rb, ok := indexedRollback[flows[k].ID.String()]; ok {
+							flows[k].CurrentServePct = &rb.FinalServePct
 						} else {
-							f.CurrentServePct = mm_utils.Float64Ptr(0)
+							flows[k].CurrentServePct = mm_utils.Float64Ptr(0)
 						}
-						f.UpdatedAt = time.Now()
-						s.repository.saveFlow(tx, f, mm_db.Update)
 					}
 					break
 				}
+			}
+			// Send RS-ENGINE-UPDATE event
+			e := prepareEvent(rs, flows)
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 			return nil
 		})
 		if errTransaction != nil {
 			return errTransaction
+		} else {
+			s.pubSubAgent.PublishBulk(eventsToPublish)
 		}
 	}
 	// If the RS is FORCED_COMPLETED
@@ -277,29 +295,36 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 			return nil
 		}
 		// Start transaction
+		eventsToPublish := []mm_pubsub.EventToPublish{}
 		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 			forcedFlowID := *rs.Configuration.StateConfigurations.CompletedFlowID
 
 			// Retrieve all active Flows for the Use Case
-			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID)
 			if err != nil {
 				return err
 			}
 			// Per each flow, if equal to the forced Flow, put to 100%, otherwise to 0%
-			for _, flow := range flows {
-				if flow.ID == forcedFlowID {
-					flow.CurrentServePct = mm_utils.Float64Ptr(100)
+			for i := range flows {
+				if flows[i].ID == forcedFlowID {
+					flows[i].CurrentServePct = mm_utils.Float64Ptr(100)
 				} else {
-					flow.CurrentServePct = mm_utils.Float64Ptr(0)
+					flows[i].CurrentServePct = mm_utils.Float64Ptr(0)
 				}
-				flow.UpdatedAt = time.Now()
-				s.repository.saveFlow(tx, flow, mm_db.Update)
-
+			}
+			// Send RS-ENGINE-UPDATE event
+			e := prepareEvent(rs, flows)
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 			return nil
 		})
 		if errTransaction != nil {
 			return errTransaction
+		} else {
+			s.pubSubAgent.PublishBulk(eventsToPublish)
 		}
 	}
 	return nil
@@ -334,24 +359,30 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			return nil
 		}
 		// List of Flows without an explicit Warmup goal
-		activeFlowsWithoutGoal := []flowEntity{}
+		activeFlowsWithoutGoalIndexes := []int{}
 		// Representation of Warmup goal (FlowID --> Pct Goal)
 		indexedGoals := map[string]float64{}
 		for _, goal := range rs.Configuration.Warmup.Goals {
 			indexedGoals[goal.FlowID.String()] = goal.FinalServePct
 		}
 		// Start transaction
+		eventsToPublish := []mm_pubsub.EventToPublish{}
 		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 			// Retrieve all active Flows for the Use Case
-			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID)
 			if err != nil {
 				return err
 			}
 			// If there are no active Flows, mark the RS as completed
 			if len(flows) == 0 {
 				rs.RolloutState = mm_pubsub.RolloutStateCompleted
-				rs.UpdatedAt = time.Now()
-				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+				// Send RS-ENGINE-UPDATE event
+				e := prepareEvent(rs, flows)
+				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+					return err
+				} else {
+					eventsToPublish = append(eventsToPublish, event)
+				}
 				return nil
 			}
 			// From now, check how many minutes are missing to reach the target (start of WARMUP + Interval Mins)
@@ -363,44 +394,47 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			// Indicates if all Flows have achieved their goal
 			var flowGoalAchieved bool = true
 			var totalPctReservedForGoals float64 = 0
-			for _, flow := range flows {
+			for i := range flows {
 				// Per each flow update PCT and check if there is an explicit Warmup goal achieved
-				if pctGoal, ok := indexedGoals[flow.ID.String()]; !ok {
+				if pctGoal, ok := indexedGoals[flows[i].ID.String()]; !ok {
 					// No explicit Warmup goal, add to the list
-					activeFlowsWithoutGoal = append(activeFlowsWithoutGoal, flow)
+					activeFlowsWithoutGoalIndexes = append(activeFlowsWithoutGoalIndexes, i)
 					continue
 				} else {
 					// Update the Flow PCT based on statistics
-					flow.CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flow.CurrentServePct, pctGoal, 0, missingMinutes))
+					flows[i].CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flows[i].CurrentServePct, pctGoal, 0, missingMinutes))
 					totalPctReservedForGoals += pctGoal
-					flow.UpdatedAt = time.Now()
-					// Save and check if the goal has been achieved
-					s.repository.saveFlow(tx, flow, mm_db.Update)
-					if *flow.CurrentServePct != pctGoal {
+					// Check if the goal has been achieved
+					if *flows[i].CurrentServePct != pctGoal {
 						flowGoalAchieved = false
 					}
 				}
 			}
 			// Now that we updated all Flows with an explicit Warmup goal, proceed with others
-			remainingPctPerFlow := (100.0 - totalPctReservedForGoals) / float64(len(activeFlowsWithoutGoal))
-			for _, flow := range activeFlowsWithoutGoal {
-				flow.CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flow.CurrentServePct, remainingPctPerFlow, 0, missingMinutes))
-				flow.UpdatedAt = time.Now()
-				s.repository.saveFlow(tx, flow, mm_db.Update)
-				if *flow.CurrentServePct != remainingPctPerFlow {
+			remainingPctPerFlow := (100.0 - totalPctReservedForGoals) / float64(len(activeFlowsWithoutGoalIndexes))
+			for _, i := range activeFlowsWithoutGoalIndexes {
+				flows[i].CurrentServePct = mm_utils.Float64Ptr(calculateNewServePct(*flows[i].CurrentServePct, remainingPctPerFlow, 0, missingMinutes))
+				if *flows[i].CurrentServePct != remainingPctPerFlow {
 					flowGoalAchieved = false
 				}
 			}
 			// If all flows have achieved their goal, we can move to the next state
 			if flowGoalAchieved {
 				rs.RolloutState = mm_pubsub.RolloutStateAdaptive
-				rs.UpdatedAt = time.Now()
-				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+			}
+			// Send RS-ENGINE-UPDATE event
+			e := prepareEvent(rs, flows)
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 			return nil
 		})
 		if errTransaction != nil {
 			return errTransaction
+		} else {
+			s.pubSubAgent.PublishBulk(eventsToPublish)
 		}
 		// Avoid Adaptive phase is executed immediately once this one is completed
 		return nil
@@ -416,6 +450,7 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			return nil
 		}
 		// Start transaction
+		eventsToPublish := []mm_pubsub.EventToPublish{}
 		errTransaction := s.storage.Transaction(func(tx *gorm.DB) error {
 			// Representation of Flow Statistics (FlowID --> Stats)
 			indexedStatistics := map[string]flowStatisticsEntity{}
@@ -427,22 +462,27 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 				indexedStatistics[stat.FlowID.String()] = stat
 			}
 			// Retrieve all active Flows for the Use Case
-			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID, true)
+			flows, err := s.repository.getActiveFlowsByUseCaseID(tx, rs.UseCaseID)
 			if err != nil {
 				return err
 			}
 			// If there are no active Flows, mark the RS as completed
 			if len(flows) == 0 {
 				rs.RolloutState = mm_pubsub.RolloutStateCompleted
-				rs.UpdatedAt = time.Now()
-				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+				// Send RS-ENGINE-UPDATE event
+				e := prepareEvent(rs, flows)
+				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+					return err
+				} else {
+					eventsToPublish = append(eventsToPublish, event)
+				}
 				return nil
 			}
 			// Check for each flow if it has at least the number of needed feeedback
 			// to start the adaptive phase
 			isAdaptiveReady := true
-			for _, flow := range flows {
-				if stat, ok := indexedStatistics[flow.ID.String()]; ok {
+			for i := range flows {
+				if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
 					if stat.TotFeedback < rs.Configuration.Adaptive.MinFeedback {
 						isAdaptiveReady = false
 					}
@@ -554,22 +594,24 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 					}
 				}
 			}
-			// Save all Flows
-			for i := range flows {
-				flows[i].UpdatedAt = time.Now()
-				s.repository.saveFlow(tx, flows[i], mm_db.Update)
-			}
 
 			// If the Adaptive phase achieved its goal, move to COMPLETED
 			if flowReachedMaxPct {
 				rs.RolloutState = mm_pubsub.RolloutStateCompleted
-				rs.UpdatedAt = time.Now()
-				s.repository.saveRolloutStrategy(tx, rs, mm_db.Update)
+			}
+			// Send RS-ENGINE-UPDATE event
+			e := prepareEvent(rs, flows)
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				return err
+			} else {
+				eventsToPublish = append(eventsToPublish, event)
 			}
 			return nil
 		})
 		if errTransaction != nil {
 			return errTransaction
+		} else {
+			s.pubSubAgent.PublishBulk(eventsToPublish)
 		}
 		return nil
 	}

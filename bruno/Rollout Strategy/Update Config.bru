@@ -18,42 +18,56 @@ body:json {
   {
     "configuration": {
       "warmup": {
-        "interval_mins": null,
-        "interval_sess_req": 10,
+        "interval_mins": 5,
+        "interval_sess_req": null,
         "goals": [
           {
-            "flow_id": "5008b7df-968f-4dfd-992f-588da7e57362",
-            "final_serve_pct": 60
+            "flow_id": "169f7c75-7911-4929-be65-700087ef06fd",
+            "final_serve_pct": 40
           },
           {
-            "flow_id": "53a45272-7728-4297-a941-a3f0795f6b94",
-            "final_serve_pct": 40
+            "flow_id": "3a99ca51-a292-4b52-b4dc-a839a99f1007",
+            "final_serve_pct": 30
+          },
+          {
+            "flow_id": "22b3ee72-257c-499d-be89-49b840187c06",
+            "final_serve_pct": 30
           }
         ]
       },
       "escape": {
         "rules": [
           {
-            "flow_id": "53a45272-7728-4297-a941-a3f0795f6b94",
+            "flow_id": "3a99ca51-a292-4b52-b4dc-a839a99f1007",
             "min_feedback": 5,
-            "lower_score": 2,
+            "lower_score": 1.5,
             "rollback": [
               {
-                "flow_id": "5008b7df-968f-4dfd-992f-588da7e57362",
+                "flow_id": "169f7c75-7911-4929-be65-700087ef06fd",
                 "final_serve_pct": 100
-              },
+              }
+            ]
+          },
+          {
+            "flow_id": "22b3ee72-257c-499d-be89-49b840187c06",
+            "min_feedback": 5,
+            "lower_score": 1.5,
+            "rollback": [
               {
-                "flow_id": "53a45272-7728-4297-a941-a3f0795f6b94",
-                "final_serve_pct": 0
+                "flow_id": "169f7c75-7911-4929-be65-700087ef06fd",
+                "final_serve_pct": 100
               }
             ]
           }
         ]
       },
       "adaptive": {
-        "min_feedback": 20,
+        "min_feedback": 5,
         "max_step_pct": 10,
-        "interval_mins": 10
+        "interval_mins": 2
+      },
+      "state_configs": {
+        "completed_flow_id": null
       }
     }
   }
