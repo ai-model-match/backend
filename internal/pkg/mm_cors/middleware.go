@@ -18,7 +18,7 @@ func CorsMiddleware(allowOrigins []string) gin.HandlerFunc {
 	return cors.New(cors.Config{
 		AllowOrigins:     allowOrigins,
 		AllowMethods:     []string{"GET", "POST", "DELETE", "PUT", "PATCH", "OPTIONS"},
-		AllowHeaders:     append([]string{"content-type"}, cors.DefaultConfig().AllowHeaders...),
+		AllowHeaders:     append([]string{"content-type", "Authorization"}, cors.DefaultConfig().AllowHeaders...),
 		AllowCredentials: true,
 	})
 }
