@@ -29,8 +29,12 @@ func GenerateFuzzySearch(query *gorm.DB, searchKey string, fields []string, rele
 	allFields = slices.Compact(allFields)
 	allFieldsText := strings.Join(allFields, " || ' ' || ")
 
-	regx := regexp.MustCompile(`[^\w]+`)
-	searchKeyFields := regx.ReplaceAllString(strings.TrimSpace(searchKey), " & ")
+	regx := regexp.MustCompile(`\w+`)
+	matches := regx.FindAllString(searchKey, -1)
+	if matches == nil {
+		matches = []string{""}
+	}
+	searchKeyFields := strings.Join(matches, " & ")
 
 	query.Joins(fmt.Sprintf(", to_tsvector('simple', %s) full_text", allFieldsText))
 	query.Joins(fmt.Sprintf(", to_tsquery('simple', '%s') query_key", searchKeyFields))
