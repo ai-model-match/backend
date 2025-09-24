@@ -1,12 +1,142 @@
+# AI Model Match
 
-![Cover image](/assets/images/cover.png)
+AI Model Match is an open-source service that helps product teams release, test, and optimize prompt configurations for AI-powered applications. It transforms the traditionally manual, trial-and-error process into an automated system that continuously identifies the best-performing configurations for each use case.
 
-# AI Model Match application!
-Thanks to AI Model Match, AI Product Managers will be able to iteratively identify the optimal combination of AI model, prompt, and configuration for their AI product. They will also be able to independently and automatically release and monitor new versions by collecting feedback and tracking requests, minimizing experimentation and implementation time while maximizing the product’s impact and effectiveness.
+By organizing AI experimentation into use cases, flows, and steps, AI Model Match allows product teams to rapidly test different strategies, collect real feedback, and deliver AI experiences that continuously improve.
 
-## Product Notes
+---
+
+## 🚀 Overview
+
+AI Model Match enables teams to:
+
+- Define **use cases** as product goals, such as providing recommendations, generating content, or planning a trip.
+- Create **flows**, representing multiple candidate strategies to achieve each goal.
+- Organize flows into **steps**, precise configurations that guide AI behavior at each stage of the interaction.
+- Intelligently distribute traffic across flows to maintain consistency while optimizing performance.
+- Collect and use feedback from both end users and product teams to automatically improve AI performance.
+
+This system empowers product managers to iterate independently, accelerate release cycles, and minimize risk, while end users benefit from AI interactions that steadily improve.
+
+---
+
+## 📐 Core Concepts
+
+1. **Use Case**
+
+   - Represents a specific product goal or objective.
+   - Defines the scope of experimentation and the metrics for success.
+
+2. **Flow**
+
+   - A candidate configuration or strategy to achieve a use case.
+   - Multiple flows can be defined to explore different approaches.
+
+3. **Step**
+
+   - Each flow is composed of steps, with each step defining a precise prompt configuration.
+   - Steps allow fine-grained control of AI behavior at each stage of interaction.
+
+4. **Session & Correlation ID**
+
+   - Each user session is tied to a unique correlation ID.
+   - Once a flow is selected for a correlation ID, all subsequent steps in that session use the same flow, ensuring predictable and coherent experiences.
+
+5. **Feedback**
+   - Ratings (1–5) and optional notes can be submitted for each session.
+   - Feedback is aggregated per flow to guide automated flow selection and optimization.
+
+---
+
+## ⚙️ Rollout Strategy
+
+AI Model Match automates the rollout of flows using a controlled, multi-phase approach:
+
+1. **Warmup**
+
+   - New flows are gradually introduced until they reach a target traffic percentage.
+
+2. **Adaptive**
+
+   - Traffic is automatically shifted toward higher-performing flows based on feedback.
+   - Flows that receive positive feedback gain more traffic until one flow converges to 100%.
+
+3. **Escape**
+   - Configurable rollback conditions trigger automatic reversion if a flow underperforms (e.g., ≥10 evaluations with an average score < 2/5).
+   - Protects user experience while minimizing risks.
+
+---
+
+## 💡 Benefits
+
+**For Product Managers**
+
+- Accelerates iteration cycles without heavy engineering dependency.
+- Provides a data-driven approach to evaluating AI strategies.
+- Enables safe experimentation with automated traffic distribution and rollback.
+
+**For End Users**
+
+- Consistent, high-quality AI experiences.
+- Interactions improve over time based on real-world feedback.
+
+**Business Value**
+
+- Reduces time and cost of AI experimentation.
+- Identifies the best-performing strategies quickly.
+- Lowers risk while scaling successful configurations.
+
+---
+
+## 🛠️ Technical Details
+
+- AI Model Match is implemented as an open-source **microservice**.
+- Provides APIs to external systems for runtime prompt configuration.
+- Supports fine-grained control over AI interactions through use cases, flows, and steps.
+- Correlation IDs ensure consistent execution across multi-step flows.
+- Feedback collection APIs enable automated performance evaluation and optimization.
+- Can be deployed standalone or integrated with existing production environments.
+- Future plans may include a **SaaS version** to abstract deployment and infrastructure management.
+
+---
+
+## 📈 How It Works
+
+1. Define a **use case** representing a product goal.
+2. Create one or more **flows** with structured **steps** for AI behavior.
+3. Release the flows and let AI Model Match manage traffic distribution and feedback collection.
+4. Monitor performance as the system automatically optimizes flow selection based on real-world data.
+
+---
+
+## 🎯 Target Audience
+
+- **Product Managers** looking to test AI strategies quickly and independently.
+- **Development Teams** integrating AI-driven workflows into their applications.
+- **End Users** who benefit from AI interactions that are consistent, coherent, and continuously improving.
+
+---
+
+## 🔗 Contributing
+
+AI Model Match is open-source and welcomes contributions from the community.
+
+- To report bugs or request features, open an **issue**.
+- To contribute code or documentation, submit a **pull request**.
+- Feedback and suggestions are always appreciated!
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## 📝 Product Specification
 
 ### Use Case Rules
+
 - You cannot have two Use Cases with the same code.
 - You cannot delete an active Use Case.
 - You cannot activate a Use Case if it does not have at least one associated active Flow.
@@ -15,6 +145,7 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - An active Use Case indicates that it can receive incoming requests.
 
 ### Flow Rules
+
 - An active Flow is considered an available Flow to serve incoming requests.
 - You cannot delete an active Flow. To delete it, deactivate first.
 - You cannot deactivate the last active Flow associated to an active Use Case.
@@ -24,6 +155,7 @@ Thanks to AI Model Match, AI Product Managers will be able to iteratively identi
 - If you start the Rollout Strategy, but deactivate all Flows, the RS will be marked completed as soon as possible.
 
 ### Picker Rules
+
 - You cannot send a request to a not active Use Case.
 - You can send a Correlation ID to ensure the same Flow will serve correlated requests.
 - Correlated requests will count once for statistics on Flows and Rollout Strategy.
@@ -47,6 +179,7 @@ flowchart LR
 ```
 
 ### Rollout Strategy Rules
+
 - The Rollout Strategy is not required for incoming requests; however, its rules can influence which Flow will handle the next request.
 - The Rollout Strategy configuration can only be updated when in the INIT status.
 - When the Rollout Strategy transitions to the WARMUP status, all Flow and Flow Step Statistics are reset for the new rollout session.
@@ -73,92 +206,128 @@ flowchart LR
 ```
 
 ## Developer Experience
+
 Below you can find instructions on how to start developing natively your project based on the Backend, leveraging a dockerized external Database.
 
 #### Install GO
+
 First of all, let's install go version `1.25.0` or higher from this link: https://go.dev/doc/install
 
 ### Check the Go version
+
 Before proceed, ensure your version is correct. Run this command in your terminal:
-``` sh
+
+```sh
 go version
 ```
+
 The answer should be something like this according to your installed version and arch:
-``` sh
+
+```sh
 go version go1.25.0 darwin/amd64
 ```
 
 ### Start external services
+
 Navigate in the `build` folder and start the Postgres DB and Redis inside Docker:
-``` sh
+
+```sh
 cd build
 docker compose up mm-database  -d
 ```
+
 It contains a PostgresQL database server mapped on the local port `54322`. Feel free to take a look to the docker-compose file to retrieve credentials if you want to use an external tool to connect with.
 
 ### Migration Tool
+
 The Migration Tool is a command that help you in creating migrations, apply or revert thanks to migration versioning. Let's start by installing the migration tool:
-``` sh
+
+```sh
 brew install golang-migrate
 ```
+
 and with the following command you can create your first migration:
-``` sh
+
+```sh
 migrate create -ext sql -dir ./scripts/migrations -seq init schema
 ```
+
 Thanks to it, the tool will create two empty sql files in the `scripts/migrations` folder to apply a new changes to the Database or to revert it.
 Once your migrations are defined, you can apply them locally with this command:
-``` sh
+
+```sh
 migrate -path "./scripts/migrations" -database "postgres://aimodelmatch:aimodelmatch@127.0.0.1:54322/aimodelmatch?sslmode=disable" up
 ```
+
 or just update the DB credentials in the file and run it as a shortcut:
-``` sh
+
+```sh
 ./scripts/migrate-local.sh
 ```
+
 Looking to the docker-compose file, you will notice that there is a dedicated service aims to apply migrations each time the project is deployed in your production environment. Basically it starts, applies all the migrations and shutdown.
 
 ### Start the webapp locally
+
 Now we have all the migration setup, the DB running and updated and we can run your local webapp locally via this command:
-``` sh
+
+```sh
 go run cmd/webapp/main.go
 ```
+
 If everything is fine, you will see in logs that the webapp is up and running, waiting incoming API requests.
 
 ### Start dockerized application
+
 If you want. you can run the webapp application in docker, useful for testing/demo purposes. So from the root folder of your project run:
-``` sh
+
+```sh
 bash build/scripts/dev/start.sh
 ```
+
 The webapp is mapped on the port `8001`.
 
 ### Test the webapp
+
 To test the webapp, please open Postman and call this endpoint:
+
 ```
 POST http://0.0.0.0:8001/api/v1/health-check
 ```
 
 ### Env variables
+
 This project is configured via environment variables that are declared and expected in the repository.
 
 Please use:
+
 - `.env` file to change configs of the app while working natively
 - Check out `docker-compose.yaml` to override configs of the app when it's run as docker container
 
 ### Commands
+
 To see the list of available commands run the following scripts from the home directory:
-``` sh
+
+```sh
 go run ./cmd/cli/cli.go
 ```
+
 The CLI will prompt all the available commands and you can select one of them to be run, accepting input parameters. E.g.
-``` sh
+
+```sh
 go run ./cmd/cli/cli.go default-command --user-id 29382
 ```
 
 ## Style
+
 This section helps in understanding the applied style of coding. Please follow it carefully. The golden rule is `consistency`!
+
 ### Export structs and methods
+
 Avoid the exposure of services, repositories, routers outside their own package. The best way is to implement an Init() method of the package
 that initialize all the components without the need of exposing them. E.g.
-``` go
+
+```go
 // > OK
 func (r auditorRepository) getAuditorByID(...) (auditor, error)
 
@@ -167,17 +336,22 @@ func (r AuditorRepository) getAuditorByID(...) (Auditor, error)
 ```
 
 ### Method declaration
+
 To keep consistency across the entire project, the method declaration leverage the value instead of the reference of the struct. E.g.
-``` go
+
+```go
 // > OK
 func (r auditorRepository) getAuditorByID(...) (auditor, error)
 
 // > NOT OK
 func (r *auditorRepository) getAuditorByID(...) (auditor, error)
 ```
+
 ### Error Handling
+
 Errors need to be returned as an expicit item. Avoid any definition of errors inside a struct for returing statement. E.g.
-``` go
+
+```go
 // > OK
 func (r auditorRepository) getAuditorByID(...) (auditor, error)
 
@@ -190,8 +364,10 @@ func (r auditorRepository) getAuditorByID(...) auditorDto
 ```
 
 ### Return by Reference or Value
+
 Avoid the return by reference if not really needed. E.g.
-``` go
+
+```go
 // > OK
 func (r auditorRepository) getAuditorByID(...) (auditor, error) {
   // In case of error
@@ -206,8 +382,10 @@ func (r auditorRepository) getAuditorByID(...) (*auditor, error) {
 ```
 
 ### Env variables
+
 Never access env variables directly form Controllers/Services/Repositories, but inject their values in the constructor. E.g.
-``` go
+
+```go
 // > OK
 func newTextAnalyzerService(isServiceActive bool) {
   return TextAnalyzerService{isActive: isServiceActive}
@@ -229,9 +407,11 @@ func (s TextAnalyzerService) AnalyzeText(text string) (string, error) {
 ```
 
 ### Context (Gin Context)
+
 We should avoid passing the GIN Context from routers to underlayers (services, repositories) unless it is really needed. The idea is to ensure services and repositories are indipendent from the framework and ensure developers cannot access directly information from the request that has not been passed by router.
-At the end, the router is the only component that can access the GIN Context and prepare DTOs to pass information to layer under itself. E.g. 
-``` go
+At the end, the router is the only component that can access the GIN Context and prepare DTOs to pass information to layer under itself. E.g.
+
+```go
 // > OK
 func (s TextAnalyzerService).AnalyzeText(text string) (string, error) {
   // Access env variable directly from the business logic
@@ -245,12 +425,15 @@ func (s TextAnalyzerService).AnalyzeText(_ *gin.Context, text string) (string, e
 ```
 
 ### External Service Call
-In case of external call API are performed, ensure to define a timeout. E.g. 
-``` go
+
+In case of external call API are performed, ensure to define a timeout. E.g.
+
+```go
 client := http.Client{Timeout: 5 * time.Second}
 client.Do(req)
 ```
 
 ### Package boundaries
+
 A package must take into account its boundaries. When we need to access a specific model (e.g. DB table) that does not fall within its boundaries, it is important to re-declare the model with only the necessary fields it needs to access and not make any writes (read-only mode). In this way, it will be easier to avoid circular dependencies and facilitate migration to a microservice approach.
 If, as a result of a change to one entity there is a subsequent change to another not of the same scope, it is appropriate to leverage the pubsub service to notify the package owner that it must react to a change made by another package.
