@@ -39,16 +39,18 @@ func (m flowModel) toEntity() flowEntity {
 type flowOrderBy string
 
 const (
-	flowOrderByTitle     flowOrderBy = "title"
-	flowOrderByActive    flowOrderBy = "active"
-	flowOrderByCreatedAt flowOrderBy = "created_at"
-	flowOrderByUpdatedAt flowOrderBy = "updated_at"
-	flowOrderByRelevance flowOrderBy = mm_db.RelevanceField
+	flowOrderByTitle      flowOrderBy = "title"
+	flowOrderByActive     flowOrderBy = "active"
+	flowOrderByCurrentPct flowOrderBy = "current_pct"
+	flowOrderByCreatedAt  flowOrderBy = "created_at"
+	flowOrderByUpdatedAt  flowOrderBy = "updated_at"
+	flowOrderByRelevance  flowOrderBy = mm_db.RelevanceField
 )
 
 var availableFlowOrderBy = []interface{}{
 	flowOrderByTitle,
 	flowOrderByActive,
+	flowOrderByCurrentPct,
 	flowOrderByCreatedAt,
 	flowOrderByUpdatedAt,
 	flowOrderByRelevance,
