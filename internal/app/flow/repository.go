@@ -92,7 +92,7 @@ func (r flowRepository) listFlows(tx *gorm.DB, useCaseID uuid.UUID, limit int, o
 	case flowOrderByRelevance:
 		order = mm_db.GenerateFuzzySearchOrderQuery(searchFields, orderDir)
 	case flowOrderByCurrentPct:
-		order = fmt.Sprintf("%s %s, %s %s", orderBy, orderDir, flowOrderByActive, mm_db.Desc)
+		order = fmt.Sprintf("%s %s, %s %s", flowOrderByActive, mm_db.Desc, orderBy, orderDir)
 	default:
 		order = fmt.Sprintf("%s %s", orderBy, orderDir)
 	}

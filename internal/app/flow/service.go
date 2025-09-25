@@ -152,16 +152,20 @@ func (s flowService) updateFlow(ctx *gin.Context, input updateFlowInputDto) (flo
 		if input.Active != nil {
 			// If you are trying to deactivate the flow, we need to guarantee that there is at least one active Flow associated to
 			// the active Use Case, otherwise return an error
-			if *updatedFlow.Active && !*input.Active {
-				if isActive, err := s.repository.checkUseCaseIsActive(tx, updatedFlow.UseCaseID); err != nil {
+			if *currentFlow.Active && !*input.Active {
+				if isUseCaseActive, err := s.repository.checkUseCaseIsActive(tx, updatedFlow.UseCaseID); err != nil {
 					return err
-				} else if isActive {
-					if lastActive, err := s.repository.checkFlowIsLastActive(tx, currentFlow.UseCaseID, currentFlow.ID); err != nil {
+				} else if isUseCaseActive {
+					if lastActiveFlow, err := s.repository.checkFlowIsLastActive(tx, currentFlow.UseCaseID, currentFlow.ID); err != nil {
 						return err
-					} else if lastActive {
+					} else if lastActiveFlow {
 						return errFlowCannotBeDeactivatedIfLastActive
 					}
 				}
+			}
+			// If you are deactivating the Flow, set its PCT to 0
+			if !*input.Active {
+				updatedFlow.CurrentServePct = mm_utils.Float64Ptr(0)
 			}
 			updatedFlow.Active = input.Active
 		}
