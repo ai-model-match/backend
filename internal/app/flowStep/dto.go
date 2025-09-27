@@ -30,15 +30,15 @@ func (r getFlowStepInputDto) validate() error {
 }
 
 type updateFlowStepInputDto struct {
-	ID            string           `uri:"flowStepId"`
-	Configuration openAIRequestDTO `json:"configuration"`
+	ID            string       `uri:"flowStepId"`
+	Configuration aiRequestDTO `json:"configuration"`
 }
 
 func (r updateFlowStepInputDto) validate() error {
 	return validation.ValidateStruct(&r,
 		validation.Field(&r.ID, validation.Required, is.UUID),
 		validation.Field(&r.Configuration, validation.Required, validation.By(func(v interface{}) error {
-			return v.(openAIRequestDTO).validate()
+			return v.(aiRequestDTO).validate()
 		})),
 	)
 }
