@@ -1,7 +1,9 @@
 package flowStep
 
 import (
-	"fmt"
+	"encoding/json"
+	"errors"
+	"reflect"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 )
@@ -25,14 +27,16 @@ const (
 // ==============================
 
 type openAIRequestDTO struct {
-	Modality modalityType `json:"modality"`
+	Modality   modalityType     `json:"modality"`
+	Parameters *json.RawMessage `json:"parameters,omitempty"`
+}
 
-	// Sub-structs for each modality
-	Chat     *chatCompletionRequestDTO     `json:"chat,omitempty"`
-	Image    *imageGenerationRequestDTO    `json:"image,omitempty"`
-	Audio    *audioTranscriptionRequestDTO `json:"audio,omitempty"`
-	File     *fileUploadRequestDTO         `json:"file,omitempty"`
-	FineTune *fineTuneRequestDTO           `json:"fine_tune,omitempty"`
+var modalityTypes = map[modalityType]reflect.Type{
+	ModalityChat:     reflect.TypeOf(chatCompletionRequestDTO{}),
+	ModalityImage:    reflect.TypeOf(imageGenerationRequestDTO{}),
+	ModalityAudio:    reflect.TypeOf(audioTranscriptionRequestDTO{}),
+	ModalityFile:     reflect.TypeOf(fileUploadRequestDTO{}),
+	ModalityFineTune: reflect.TypeOf(fineTuneRequestDTO{}),
 }
 
 // Validate validates the openAIRequestDTO based on modality
@@ -41,40 +45,31 @@ func (r openAIRequestDTO) validate() error {
 		validation.Field(&r.Modality, validation.Required, validation.In(
 			ModalityChat, ModalityImage, ModalityAudio, ModalityFile, ModalityFineTune,
 		)),
+		validation.Field(&r.Parameters, validation.Required),
 	); err != nil {
 		return err
 	}
-
-	// Validate sub-struct based on modality
-	switch r.Modality {
-	case ModalityChat:
-		if r.Chat == nil {
-			return fmt.Errorf("chat data is required for modality 'chat'")
-		}
-		return r.Chat.validate()
-	case ModalityImage:
-		if r.Image == nil {
-			return fmt.Errorf("image data is required for modality 'image'")
-		}
-		return r.Image.validate()
-	case ModalityAudio:
-		if r.Audio == nil {
-			return fmt.Errorf("audio data is required for modality 'audio'")
-		}
-		return r.Audio.validate()
-	case ModalityFile:
-		if r.File == nil {
-			return fmt.Errorf("file data is required for modality 'file'")
-		}
-		return r.File.validate()
-	case ModalityFineTune:
-		if r.FineTune == nil {
-			return fmt.Errorf("fine-tune data is required for modality 'fine-tune'")
-		}
-		return r.FineTune.validate()
-	default:
-		return fmt.Errorf("unsupported modality: %s", r.Modality)
+	cfg, err := r.ParseParameters()
+	if err != nil {
+		return err
 	}
+	return cfg.validate()
+}
+
+type validatable interface {
+	validate() error
+}
+
+func (r *openAIRequestDTO) ParseParameters() (validatable, error) {
+	dtoType, ok := modalityTypes[r.Modality]
+	if !ok {
+		return nil, errors.New("mismatched modality and configuration: " + string(r.Modality))
+	}
+	cfgPtr := reflect.New(dtoType).Interface()
+	if err := json.Unmarshal(*r.Parameters, cfgPtr); err != nil {
+		return nil, err
+	}
+	return cfgPtr.(validatable), nil
 }
 
 // ==============================
