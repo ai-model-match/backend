@@ -6,9 +6,9 @@ import (
 )
 
 type rsAdaptivePhaseDto struct {
-	MinFeedback  int64   `json:"min_feedback"`
-	MaxStepPct   float64 `json:"max_step_pct"`
-	IntervalMins int64   `json:"interval_mins"`
+	MinFeedback  int64   `json:"minFeedback"`
+	MaxStepPct   float64 `json:"maxStepPct"`
+	IntervalMins int64   `json:"intervalMins"`
 }
 
 func (r rsAdaptivePhaseDto) validate() error {

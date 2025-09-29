@@ -44,9 +44,9 @@ func (r rsEscapePhaseDto) toEntity() mm_pubsub.RsEscapePhase {
 }
 
 type rsEscapeRuleDto struct {
-	FlowID      string                `json:"flow_id"`
-	MinFeedback int64                 `json:"min_feedback"`
-	LowerScore  *float64              `json:"lower_score"`
+	FlowID      string                `json:"flowId"`
+	MinFeedback int64                 `json:"minFeedback"`
+	LowerScore  *float64              `json:"lowerScore"`
 	Rollback    []rsEscapeRollbackDto `json:"rollback"`
 }
 
@@ -92,8 +92,8 @@ func (r rsEscapeRuleDto) toEntity() mm_pubsub.RsEscapeRule {
 }
 
 type rsEscapeRollbackDto struct {
-	FlowID        string   `json:"flow_id"`
-	FinalServePct *float64 `json:"final_serve_pct"`
+	FlowID        string   `json:"flowId"`
+	FinalServePct *float64 `json:"finalServePct"`
 }
 
 func (r rsEscapeRollbackDto) validate() error {

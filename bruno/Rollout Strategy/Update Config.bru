@@ -18,56 +18,53 @@ body:json {
   {
     "configuration": {
       "warmup": {
-        "interval_mins": 5,
-        "interval_sess_req": null,
+        "intervalMins": 5,
+        "intervalSessTeq": null,
         "goals": [
           {
-            "flow_id": "169f7c75-7911-4929-be65-700087ef06fd",
-            "final_serve_pct": 40
+            "flowId": "169f7c75-7911-4929-be65-700087ef06fd",
+            "finalServePct": 40
           },
           {
-            "flow_id": "3a99ca51-a292-4b52-b4dc-a839a99f1007",
-            "final_serve_pct": 30
+            "flowId": "3a99ca51-a292-4b52-b4dc-a839a99f1007",
+            "finalServePct": 30
           },
           {
-            "flow_id": "22b3ee72-257c-499d-be89-49b840187c06",
-            "final_serve_pct": 30
+            "flowId": "22b3ee72-257c-499d-be89-49b840187c06",
+            "finalServePct": 30
           }
         ]
       },
       "escape": {
         "rules": [
           {
-            "flow_id": "3a99ca51-a292-4b52-b4dc-a839a99f1007",
-            "min_feedback": 5,
-            "lower_score": 1.5,
+            "flowId": "3a99ca51-a292-4b52-b4dc-a839a99f1007",
+            "minFeedback": 5,
+            "lowerScore": 1.5,
             "rollback": [
               {
-                "flow_id": "169f7c75-7911-4929-be65-700087ef06fd",
-                "final_serve_pct": 100
+                "flowId": "169f7c75-7911-4929-be65-700087ef06fd",
+                "finalServePct": 100
               }
             ]
           },
           {
-            "flow_id": "22b3ee72-257c-499d-be89-49b840187c06",
-            "min_feedback": 5,
-            "lower_score": 1.5,
+            "flowId": "22b3ee72-257c-499d-be89-49b840187c06",
+            "minFeedback": 5,
+            "lowerScore": 1.5,
             "rollback": [
               {
-                "flow_id": "169f7c75-7911-4929-be65-700087ef06fd",
-                "final_serve_pct": 100
+                "flowId": "169f7c75-7911-4929-be65-700087ef06fd",
+                "finalServePct": 100
               }
             ]
           }
         ]
       },
       "adaptive": {
-        "min_feedback": 5,
-        "max_step_pct": 10,
-        "interval_mins": 2
-      },
-      "state_configs": {
-        "completed_flow_id": null
+        "minFeedback": 5,
+        "maxStepPct": 10,
+        "intervalMins": 2
       }
     }
   }

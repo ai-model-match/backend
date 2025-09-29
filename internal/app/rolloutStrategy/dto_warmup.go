@@ -10,8 +10,8 @@ import (
 )
 
 type rsWarmupPhaseDto struct {
-	IntervalMins     *int64          `json:"interval_mins"`
-	IntervalSessReqs *int64          `json:"interval_sess_req"`
+	IntervalMins     *int64          `json:"intervalMins"`
+	IntervalSessReqs *int64          `json:"intervalSessReq"`
 	Goals            []rsFlowGoalDto `json:"goals"`
 }
 
@@ -61,8 +61,8 @@ func (r rsWarmupPhaseDto) toEntity() mm_pubsub.RsWarmupPhase {
 }
 
 type rsFlowGoalDto struct {
-	FlowID        string   `json:"flow_id"`
-	FinalServePct *float64 `json:"final_serve_pct"`
+	FlowID        string   `json:"flowId"`
+	FinalServePct *float64 `json:"finalServePct"`
 }
 
 func (r rsFlowGoalDto) validate() error {

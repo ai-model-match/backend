@@ -78,22 +78,22 @@ type RSConfiguration struct {
 	Warmup              *RsWarmupPhase      `json:"warmup"`
 	Escape              *RsEscapePhase      `json:"escape"`
 	Adaptive            RsAdaptivePhase     `json:"adaptive"`
-	StateConfigurations StateConfigurations `json:"state_configs"`
+	StateConfigurations StateConfigurations `json:"stateConfigs"`
 }
 
 type StateConfigurations struct {
-	CompletedFlowID *uuid.UUID `json:"completed_flow_id"`
+	CompletedFlowID *uuid.UUID `json:"completedFlowId"`
 }
 
 type RsWarmupPhase struct {
-	IntervalMins     *int64       `json:"interval_mins"`
-	IntervalSessReqs *int64       `json:"interval_sess_req"`
+	IntervalMins     *int64       `json:"intervalMins"`
+	IntervalSessReqs *int64       `json:"intervalSessReq"`
 	Goals            []RsFlowGoal `json:"goals"`
 }
 
 type RsFlowGoal struct {
-	FlowID        uuid.UUID `json:"flow_id"`
-	FinalServePct float64   `json:"final_serve_pct"`
+	FlowID        uuid.UUID `json:"flowId"`
+	FinalServePct float64   `json:"finalServePct"`
 }
 
 type RsEscapePhase struct {
@@ -101,21 +101,21 @@ type RsEscapePhase struct {
 }
 
 type RsEscapeRule struct {
-	FlowID      uuid.UUID          `json:"flow_id"`
-	MinFeedback int64              `json:"min_feedback"`
-	LowerScore  float64            `json:"lower_score"`
+	FlowID      uuid.UUID          `json:"flowId"`
+	MinFeedback int64              `json:"minFeedback"`
+	LowerScore  float64            `json:"lowerScore"`
 	Rollback    []RsEscapeRollback `json:"rollback"`
 }
 
 type RsEscapeRollback struct {
-	FlowID        uuid.UUID `json:"flow_id"`
-	FinalServePct float64   `json:"final_serve_pct"`
+	FlowID        uuid.UUID `json:"flowId"`
+	FinalServePct float64   `json:"finalServePct"`
 }
 
 type RsAdaptivePhase struct {
-	MinFeedback  int64   `json:"min_feedback"`
-	MaxStepPct   float64 `json:"max_step_pct"`
-	IntervalMins int64   `json:"interval_mins"`
+	MinFeedback  int64   `json:"minFeedback"`
+	MaxStepPct   float64 `json:"maxStepPct"`
+	IntervalMins int64   `json:"intervalMins"`
 }
 
 type PickerEventEntity struct {
