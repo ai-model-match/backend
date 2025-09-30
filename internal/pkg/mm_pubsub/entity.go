@@ -87,7 +87,7 @@ type StateConfigurations struct {
 
 type RsWarmupPhase struct {
 	IntervalMins     *int64       `json:"intervalMins"`
-	IntervalSessReqs *int64       `json:"intervalSessReq"`
+	IntervalSessReqs *int64       `json:"intervalSessReqs"`
 	Goals            []RsFlowGoal `json:"goals"`
 }
 

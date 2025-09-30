@@ -11,16 +11,16 @@ import (
 
 type rsWarmupPhaseDto struct {
 	IntervalMins     *int64          `json:"intervalMins"`
-	IntervalSessReqs *int64          `json:"intervalSessReq"`
+	IntervalSessReqs *int64          `json:"intervalSessReqs"`
 	Goals            []rsFlowGoalDto `json:"goals"`
 }
 
 func (r rsWarmupPhaseDto) validate() error {
 	if r.IntervalMins == nil && r.IntervalSessReqs == nil {
-		return errors.New("at least one between 'interval_mins' or 'interval_sess_req' need to be set")
+		return errors.New("at least one between 'intervalMins' or 'intervalSessReqs' need to be set")
 	}
 	if r.IntervalMins != nil && r.IntervalSessReqs != nil {
-		return errors.New("only one between 'interval_mins' or 'interval_sess_req' can be set")
+		return errors.New("only one between 'intervalMins' or 'intervalSessReqs' can be set")
 	}
 	if err := validation.ValidateStruct(&r,
 		validation.Field(&r.IntervalMins, validation.Min(int64(1))),
