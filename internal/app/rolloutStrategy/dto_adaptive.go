@@ -13,7 +13,7 @@ type rsAdaptivePhaseDto struct {
 
 func (r rsAdaptivePhaseDto) validate() error {
 	return validation.ValidateStruct(&r,
-		validation.Field(&r.MinFeedback, validation.Required, validation.Min(int64(1))),
+		validation.Field(&r.MinFeedback, validation.Min(int64(0))),
 		validation.Field(&r.MaxStepPct, validation.Required, validation.Min(1.0), validation.Max(100.0)),
 		validation.Field(&r.IntervalMins, validation.Required, validation.Min(int64(1))),
 	)
