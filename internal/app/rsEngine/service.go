@@ -119,7 +119,7 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 			}
 			// Send RS-ENGINE-UPDATE event
 			e := prepareEvent(rs, flows)
-			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 				return err
 			} else {
 				eventsToPublish = append(eventsToPublish, event)
@@ -206,7 +206,7 @@ func (s rsEngineService) onFlowStatisticsUpdate(event mm_pubsub.FlowStatisticsEv
 			}
 			// Send RS-ENGINE-UPDATE event
 			e := prepareEvent(rs, flows)
-			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 				return err
 			} else {
 				eventsToPublish = append(eventsToPublish, event)
@@ -275,7 +275,7 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 			}
 			// Send RS-ENGINE-UPDATE event
 			e := prepareEvent(rs, flows)
-			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 				return err
 			} else {
 				eventsToPublish = append(eventsToPublish, event)
@@ -314,7 +314,7 @@ func (s rsEngineService) onRolloutStrategyChangeState(event mm_pubsub.RolloutStr
 			}
 			// Send RS-ENGINE-UPDATE event
 			e := prepareEvent(rs, flows)
-			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 				return err
 			} else {
 				eventsToPublish = append(eventsToPublish, event)
@@ -378,7 +378,7 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 				rs.RolloutState = mm_pubsub.RolloutStateCompleted
 				// Send RS-ENGINE-UPDATE event
 				e := prepareEvent(rs, flows)
-				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 					return err
 				} else {
 					eventsToPublish = append(eventsToPublish, event)
@@ -424,7 +424,7 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			}
 			// Send RS-ENGINE-UPDATE event
 			e := prepareEvent(rs, flows)
-			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 				return err
 			} else {
 				eventsToPublish = append(eventsToPublish, event)
@@ -471,7 +471,7 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 				rs.RolloutState = mm_pubsub.RolloutStateCompleted
 				// Send RS-ENGINE-UPDATE event
 				e := prepareEvent(rs, flows)
-				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+				if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 					return err
 				} else {
 					eventsToPublish = append(eventsToPublish, event)
@@ -546,11 +546,15 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 					}
 				}
 			} else {
-				// Otherwise, for each worst Flow, calculate how much we need to decrement it based on the distance between its Score and Best Score
+				// Otherwise, for each worst Flow, calculate how much we need to decrement it based on the distance between its Score and Worst Score
 				totDecremented := 0.0
 				for _, i := range worstFlowIndexes {
 					if stat, ok := indexedStatistics[flows[i].ID.String()]; ok {
-						toDecrement := ((sumAvgScoreByWorst - stat.AvgScore) / (sumAvgScoreByWorst * float64(len(worstFlowIndexes)-1)) * totalPossibleIncrement)
+						denominator := (sumAvgScoreByWorst * float64(len(worstFlowIndexes)-1))
+						if denominator == 0 {
+							denominator = 1
+						}
+						toDecrement := ((sumAvgScoreByWorst - stat.AvgScore) / denominator * totalPossibleIncrement)
 						newPct := *flows[i].CurrentServePct - toDecrement
 
 						if newPct < 0.0 {
@@ -601,7 +605,7 @@ func (s rsEngineService) tickOnRolloutStrategy(rs rolloutStrategyEntity) error {
 			}
 			// Send RS-ENGINE-UPDATE event
 			e := prepareEvent(rs, flows)
-			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEnginekV1, e); err != nil {
+			if event, err := s.pubSubAgent.Persist(tx, mm_pubsub.TopicRsEngineV1, e); err != nil {
 				return err
 			} else {
 				eventsToPublish = append(eventsToPublish, event)

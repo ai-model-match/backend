@@ -25,7 +25,7 @@ func newFlowConsumer(pubSub *mm_pubsub.PubSubAgent, service flowServiceInterface
 
 func (r flowConsumer) subscribe() {
 	go func() {
-		messageChannel := r.pubSub.Subscribe(mm_pubsub.TopicRsEnginekV1)
+		messageChannel := r.pubSub.Subscribe(mm_pubsub.TopicRsEngineV1)
 		isChannelOpen := true
 		for isChannelOpen {
 			func() {
