@@ -142,15 +142,14 @@ func (s flowStepService) createStepsForAllFlowsOfUseCase(useCaseID uuid.UUID) er
 			return mm_err.ErrGeneric
 		}
 		for _, missingFlow := range missingFlows {
-			config, _ := json.Marshal(map[string]interface{}{})
-			placeholders, _ := json.Marshal([]string{})
+
 			newFlowStep := flowStepEntity{
 				ID:            uuid.New(),
 				FlowID:        missingFlow.FlowID,
 				UseCaseID:     missingFlow.UseCaseID,
 				UseCaseStepID: missingFlow.UseCaseStepID,
-				Configuration: json.RawMessage(config),
-				Placeholders:  json.RawMessage(placeholders),
+				Configuration: getDefaultConfiguration(),
+				Placeholders:  getDefaultPlaceholders(),
 				CreatedAt:     now,
 				UpdatedAt:     now,
 			}

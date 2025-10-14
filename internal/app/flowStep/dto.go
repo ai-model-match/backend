@@ -1,6 +1,8 @@
 package flowStep
 
 import (
+	"encoding/json"
+
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/go-ozzo/ozzo-validation/v4/is"
 )
@@ -41,4 +43,39 @@ func (r updateFlowStepInputDto) validate() error {
 			return v.(aiRequestDTO).validate()
 		})),
 	)
+}
+
+func getDefaultConfiguration() json.RawMessage {
+	return json.RawMessage([]byte(`{
+  "modality": "chat.completions",
+  "parameters": {
+    "model": "gpt-5",
+    "temperature": 0.7,
+    "max_tokens": 100,
+    "frequency_penalty": 0,
+    "presence_penalty": 0,
+    "n": 1,
+    "top_p": 1,
+    "stream": false,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are an AI assistant that provides concise and clear responses."
+      },
+      {
+        "role": "user",
+        "content": "<<USER_INPUT>>"
+      }
+    ],
+    "user": "<<CORRELATION_ID>>"
+  }
+}`))
+}
+
+func getDefaultPlaceholders() json.RawMessage {
+	params, _ := json.Marshal([]string{
+		"USER_INPUT",
+		"CORRELATION_ID",
+	})
+	return json.RawMessage(params)
 }
