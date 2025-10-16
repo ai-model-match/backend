@@ -1,9 +1,9 @@
 CREATE TABLE "mm_feedback" (
     "id" VARCHAR(36) PRIMARY KEY,
-    "use_case_id" VARCHAR(36),
-    "flow_id" VARCHAR(36),
-    "correlation_id" VARCHAR(36),
-    "score" DOUBLE PRECISION,
+    "use_case_id" VARCHAR(36) NOT NULL,
+    "flow_id" VARCHAR(36) NOT NULL,
+    "correlation_id" VARCHAR(36) NOT NULL,
+    "score" DOUBLE PRECISION NOT NULL,
     "comment" TEXT,
     "created_at" TIMESTAMP NOT NULL
 );

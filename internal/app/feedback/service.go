@@ -56,6 +56,7 @@ func (s feedbackService) createFeedback(ctx *gin.Context, input createFeedbackIn
 			FlowID:        correlation.FlowID,
 			Score:         *mm_utils.RoundTo2DecimalsPtr(&input.Score),
 			Comment:       input.Comment,
+			ReferenceLink: input.ReferenceLink,
 			CreatedAt:     now,
 		}
 		if _, err = s.repository.saveFeedback(tx, newFeedback, mm_db.Create); err != nil {
@@ -74,6 +75,7 @@ func (s feedbackService) createFeedback(ctx *gin.Context, input createFeedbackIn
 					FlowID:        newFeedback.FlowID,
 					Score:         newFeedback.Score,
 					Comment:       newFeedback.Comment,
+					ReferenceLink: newFeedback.ReferenceLink,
 					CreatedAt:     newFeedback.CreatedAt,
 				},
 				EventChangedFields: mm_utils.DiffStructs(feedbackEntity{}, newFeedback),

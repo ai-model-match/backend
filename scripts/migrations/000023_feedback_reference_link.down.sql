@@ -1,0 +1,1 @@
+ALTER TABLE "mm_feedback" DROP COLUMN "reference_link";

@@ -27,7 +27,8 @@ type feedbackModel struct {
 	FlowID        uuid.UUID `gorm:"column:flow_id;type:varchar(36)"`
 	CorrelationID uuid.UUID `gorm:"column:correlation_id;type:varchar(36)"`
 	Score         float64   `gorm:"column:score;type:double precision"`
-	Comment       string    `gorm:"column:comment;type:text"`
+	Comment       *string   `gorm:"column:comment;type:text"`
+	ReferenceLink *string   `gorm:"column:reference_link;type:text"`
 	CreatedAt     time.Time `gorm:"column:created_at;type:timestamp;autoCreateTime:false"`
 }
 

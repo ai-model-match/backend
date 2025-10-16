@@ -1,0 +1,1 @@
+ALTER TABLE "mm_feedback" ADD COLUMN IF NOT EXISTS "reference_link" TEXT;

@@ -137,8 +137,9 @@ type FeedbackEventEntity struct {
 	UseCaseID     uuid.UUID `json:"useCaseId"`
 	FlowID        uuid.UUID `json:"flowId"`
 	CorrelationID uuid.UUID `json:"correlationId"`
-	Score         float64   `json:"score"`
-	Comment       string    `json:"comment"`
+	Score         float64   `json:"syntheticScore"`
+	Comment       *string   `json:"comment"`
+	ReferenceLink *string   `json:"referenceLink"`
 	CreatedAt     time.Time `json:"createdAt"`
 }
 
